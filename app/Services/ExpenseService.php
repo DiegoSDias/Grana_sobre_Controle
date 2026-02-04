@@ -1,0 +1,132 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Categories;
+use App\Models\Expenses;
+use Carbon\Carbon;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+
+class ExpenseService
+{
+    public function create(array $data): void
+    {
+        DB::transaction(function () use ($data) {
+
+            $categoryId = $this->resolveCategory($data);
+            $data['category_id'] = $categoryId;
+
+            if (!empty($data['is_installment'])) {
+                $this->createInstallments($data);
+            } else {
+                $this->createSingleExpense($data);
+            }
+
+        });
+
+    }
+
+    private function resolveCategory(array $data) {
+        if($data['category_id'] !== 'new') {
+            return $data['category_id'];
+        }
+
+        $category = Categories::create([
+            'user_id' => auth()->id(),
+            'name' => $data['new_category'],
+            'type' => $data['type']
+        ]);
+
+        return $category->id;
+
+    }
+
+    private function createSingleExpense(array $data) {
+
+        Expenses::create([
+                'user_id' => auth()->id(),
+                'category_id' => $data['category_id'],
+                'date' => $data['date'],
+                'month' => $data['month'],
+                'year' => $data['year'],
+                'type' => $data['type'],
+                'description' => $data['description'] ?? null,
+                'amount' => $data['amount'],
+                'is_installment' => false,
+            ]);
+    }
+
+    private function createInstallments(array $data) {
+        $installmentsGroup = Str::uuid();
+        $totalInstallments = $data['total_installments'];
+        $amount = $data['amount'];
+        $valueInstallment = $amount / $totalInstallments;
+        $baseDate = Carbon::createFromDate($data['year'], $data['month'], 1);
+        
+        
+        for($i = 1; $i <= $totalInstallments; $i++) {
+            $date = $baseDate->copy()->addMonths($i - 1);
+
+            Expenses::create([
+                'user_id' => auth()->id(),
+                'category_id' => $data['category_id'],
+                'date' => $data['date'],
+                'month' => $date->month,
+                'year' => $date->year,
+                'type' => $data['type'],
+                'description' => $data['description'] ?? null,
+                'amount' => $valueInstallment,
+                'is_installment' => true,
+                'current_installment' => $i,
+                'total_installments' => $data['total_installments'],
+                'installments_group' => $installmentsGroup,
+            ]);
+        }
+    }
+
+
+    public function update(Expenses $expense, array $data) {
+
+        DB::transaction(function () use ($expense, $data) {
+
+            $categoryId = $this->resolveCategory($data);
+            $data['category_id'] = $categoryId;
+
+            if (!empty($data['is_installment'])) {
+                Expenses::where('installments_group', $expense->installments_group)->delete();
+                $baseDate = Carbon::createFromDate(
+                    $expense->year,
+                    $expense->month,
+                    1
+                )->subMonths($expense->current_installment - 1);
+                $data['month'] = $baseDate->month;
+                $data['year']  = $baseDate->year;
+                $this->createInstallments($data);
+            } else {
+                $this->updateSingleExpense($expense, $data);
+            }
+
+        });
+    }
+
+    private function updateSingleExpense(Expenses $expense, array $data) {
+
+        $expense->update([
+                'category_id' => $data['category_id'],
+                'type' => $data['type'],
+                'description' => $data['description'] ?? null,
+                'amount' => $data['amount'],
+            ]);
+    }
+
+    public function destroy(Expenses $expense) {
+        DB::transaction(function() use($expense) {
+            if(!empty($expense->is_installment)) {
+                Expenses::where('installments_group', $expense->installments_group)->delete();
+            } else {
+                $expense->delete();
+            }
+        });
+    }
+}
