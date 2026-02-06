@@ -106,18 +106,21 @@ class ExpensesController extends Controller
             'is_installment' => 'boolean',
             'total_installments' => 'nullable|required_if:is_installment,true|integer|min:2'
         ]);
+
         $data['year'] = $request->year;
         $data['month'] = $request->month;
         $data['date'] = now()->format('Y-m-d');
+
         if(!empty($data['is_installment'])) {
             $expense = Expenses::findOrFail($id);
             $data['current_installment'] = $expense->current_installment;
-            $expense = Expenses::where('installments_group', $expense->installments_group)
-                                ->firstOrFail();
+            if($expense->installments_group) {
+                $expense = Expenses::where('installments_group', $expense->installments_group)
+                                    ->firstOrFail();
+            }
         } else {
              $expense = Expenses::findOrFail($id);
         }
-
         $this->expenseService->update($expense, $data);
         
         return redirect()

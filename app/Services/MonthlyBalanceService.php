@@ -17,6 +17,16 @@ class MonthlyBalanceService
             ->where('month', $month)
             ->sum('amount');
 
+        $currentMonth = $year . '-' . $month;
+        $previousMonth = MonthlyBalance::where('user_id', auth()->id())
+        ->where('month', '<', $currentMonth)
+        ->orderBy('month', 'desc')
+        ->first();
+        
+        $banlaceMonthPrevious = $previousMonth?->closing_balance ?? 0;
+        
+        $incomes += $banlaceMonthPrevious;
+
         $expenses = Expenses::where('type', 'expense')
             ->where('year', $year)
             ->where('month', $month)
@@ -25,7 +35,8 @@ class MonthlyBalanceService
         return [
             'incomes' => $incomes,
             'expenses' => $expenses,
-            'balance' => $incomes - $expenses
+            'balance' => $incomes - $expenses,
+            'banlaceMonthPrevious' => $banlaceMonthPrevious
             ];
     }
 

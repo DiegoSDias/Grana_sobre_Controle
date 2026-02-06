@@ -86,27 +86,71 @@ class ExpenseService
     }
 
 
-    public function update(Expenses $expense, array $data) {
-
+    public function update(Expenses $expense, array $data)
+    {
         DB::transaction(function () use ($expense, $data) {
 
-            $categoryId = $this->resolveCategory($data);
-            $data['category_id'] = $categoryId;
+            $data['category_id'] = $this->resolveCategory($data);
 
-            if (!empty($data['is_installment'])) {
+            $wasInstallment = !empty($expense->installments_group);
+            $willBeInstallment = !empty($data['is_installment']);
+
+
+            if (!$wasInstallment && $willBeInstallment) {
+
+                $baseDate = Carbon::createFromDate(
+                    $expense->year,
+                    $expense->month,
+                    1
+                );
+ 
+                $expense->delete();
+
+                $data['month'] = $baseDate->month;
+                $data['year']  = $baseDate->year;
+
+                $this->createInstallments($data);
+
+                return;
+            }
+
+            if ($wasInstallment && !$willBeInstallment) {
+
+                $baseDate = Carbon::createFromDate(
+                    $expense->year,
+                    $expense->month,
+                    1
+                    )->subMonths($expense->current_installment - 1);
+                    
                 Expenses::where('installments_group', $expense->installments_group)->delete();
+                    
+                $data['month'] = $baseDate->month;
+                $data['year']  = $baseDate->year;
+    
+                $this->createSingleExpense($data);
+
+                return;
+            }
+
+            if ($wasInstallment && $willBeInstallment) {
+
                 $baseDate = Carbon::createFromDate(
                     $expense->year,
                     $expense->month,
                     1
                 )->subMonths($expense->current_installment - 1);
+
+                Expenses::where('installments_group', $expense->installments_group)->delete();
+
                 $data['month'] = $baseDate->month;
                 $data['year']  = $baseDate->year;
+
                 $this->createInstallments($data);
-            } else {
-                $this->updateSingleExpense($expense, $data);
+
+                return;
             }
 
+            $this->updateSingleExpense($expense, $data);
         });
     }
 

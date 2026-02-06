@@ -33,19 +33,14 @@ class MonthsController extends Controller
                                 ->where('year', $year)
                                 ->get();
         
+        
         $values = $this->monthlyBalanceService->calculate($year, $month);
         
-        $currentMonth = $year . '-' . $month;
-        $previousMonth = MonthlyBalance::where('user_id', auth()->id())
-        ->where('month', '<', $currentMonth)
-        ->orderBy('month', 'desc')
-        ->first();
         
-        $banlaceMonthPrevious = $previousMonth?->closing_balance ?? 0;
-        
-        $incomesBalance = $values['incomes'] + $banlaceMonthPrevious;
+        $incomesBalance = $values['incomes'];
         $expensesBalance = $values['expenses'];
-        $balance = $values['balance'] + $banlaceMonthPrevious;
+        $balance = $values['balance'];
+        $banlaceMonthPrevious = $values['banlaceMonthPrevious'];
 
         return view('months.show', compact(
                                             'expenses', 
