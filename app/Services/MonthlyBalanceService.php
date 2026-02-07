@@ -27,15 +27,27 @@ class MonthlyBalanceService
         
         $incomes += $banlaceMonthPrevious;
 
-        $expenses = Expenses::where('type', 'expense')
+        $expensesNormal = Expenses::where('type', 'expense')
             ->where('year', $year)
             ->where('month', $month)
+            ->where('payment_mode', '!=', 'pix')
             ->sum('amount');
+
+        $expensesPix = Expenses::where('type', 'expense')
+            ->where('year', $year)
+            ->where('month', $month)
+            ->where('payment_mode', 'pix')
+            ->sum('amount');
+
+        $balanceMonth = $incomes - $expensesNormal;
+        $balanceAvailable = $balanceMonth - $expensesPix;
 
         return [
             'incomes' => $incomes,
-            'expenses' => $expenses,
-            'balance' => $incomes - $expenses,
+            'expenses' => $expensesNormal,
+            'expensesPix' => $expensesPix,
+            'balance' => $balanceMonth,
+            'balanceAvailable' => $balanceAvailable,
             'banlaceMonthPrevious' => $banlaceMonthPrevious
             ];
     }
@@ -50,7 +62,7 @@ class MonthlyBalanceService
                 'month' => $monthYear,
             ],
             [
-                'closing_balance' => $balance['balance'],
+                'closing_balance' => $balance['balanceAvailable'],
             ]
         );
     }
