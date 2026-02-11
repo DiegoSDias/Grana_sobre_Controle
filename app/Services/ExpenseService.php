@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Categories;
-use App\Models\Expenses;
+use App\Models\Category;
+use App\Models\Expense;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
@@ -32,7 +32,7 @@ class ExpenseService
             return $data['category_id'];
         }
 
-        $category = Categories::create([
+        $category = Category::create([
             'user_id' => auth()->id(),
             'name' => $data['new_category'],
             'type' => $data['type']
@@ -44,7 +44,7 @@ class ExpenseService
 
     private function createSingleExpense(array $data) {
 
-        Expenses::create([
+        Expense::create([
                 'user_id' => auth()->id(),
                 'category_id' => $data['category_id'],
                 'date' => $data['date'],
@@ -68,7 +68,7 @@ class ExpenseService
         for($i = 1; $i <= $totalInstallments; $i++) {
             $date = $baseDate->copy()->addMonths($i - 1);
 
-            Expenses::create([
+            Expense::create([
                 'user_id' => auth()->id(),
                 'category_id' => $data['category_id'],
                 'date' => $data['date'],
@@ -86,7 +86,7 @@ class ExpenseService
     }
 
 
-    public function update(Expenses $expense, array $data)
+    public function update(Expense $expense, array $data)
     {
         DB::transaction(function () use ($expense, $data) {
 
@@ -122,7 +122,7 @@ class ExpenseService
                     1
                     )->subMonths($expense->current_installment - 1);
                     
-                Expenses::where('installments_group', $expense->installments_group)->delete();
+                Expense::where('installments_group', $expense->installments_group)->delete();
                     
                 $data['month'] = $baseDate->month;
                 $data['year']  = $baseDate->year;
@@ -140,7 +140,7 @@ class ExpenseService
                     1
                 )->subMonths($expense->current_installment - 1);
 
-                Expenses::where('installments_group', $expense->installments_group)->delete();
+                Expense::where('installments_group', $expense->installments_group)->delete();
 
                 $data['month'] = $baseDate->month;
                 $data['year']  = $baseDate->year;
@@ -154,7 +154,7 @@ class ExpenseService
         });
     }
 
-    private function updateSingleExpense(Expenses $expense, array $data) {
+    private function updateSingleExpense(Expense $expense, array $data) {
 
         $expense->update([
                 'category_id' => $data['category_id'],
@@ -164,10 +164,10 @@ class ExpenseService
             ]);
     }
 
-    public function destroy(Expenses $expense) {
+    public function destroy(Expense $expense) {
         DB::transaction(function() use($expense) {
             if(!empty($expense->is_installment)) {
-                Expenses::where('installments_group', $expense->installments_group)->delete();
+                Expense::where('installments_group', $expense->installments_group)->delete();
             } else {
                 $expense->delete();
             }

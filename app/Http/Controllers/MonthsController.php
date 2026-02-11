@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Categories;
-use App\Models\Expenses;
+use App\Models\Category;
+use App\Models\Expense;
 use App\Models\MonthlyBalance;
 use App\Services\MonthlyBalanceService;
 use Illuminate\Http\Request;
@@ -19,17 +19,17 @@ class MonthsController extends Controller
 
     public function show(Request $request ,String $year, String $month) {
 
-        $expenses = Expenses::where('month', $month)
+        $expenses = Expense::where('month', $month)
             ->where('year', $year)
             ->get();
 
-        $categoriesIncome = Categories::where('type', 'income')
+        $categoriesIncome = Category::where('type', 'income')
                                 ->get();
 
-        $categoriesExpense = Categories::where('type', 'expense')
+        $categoriesExpense = Category::where('type', 'expense')
                                 ->get();
 
-        $typeIncomes = Expenses::with('category')
+        $typeIncomes = Expense::with('category')
                                 ->where('type', 'income')
                                 ->where('month', $month)
                                 ->where('year', $year)
@@ -41,7 +41,7 @@ class MonthsController extends Controller
                                 })
                                 ->get();
 
-        $typeExpenses = Expenses::with('category')
+        $typeExpenses = Expense::with('category')
                                 ->where('type', 'expense')
                                 ->where('month', $month)
                                 ->where('year', $year)
@@ -59,9 +59,6 @@ class MonthsController extends Controller
                                 })
                                 ->get();
         
-        $filteredIncomesTotal = $typeIncomes->sum('amount');
-        $filteredExpensesTotal = $typeExpenses->sum('amount');
-        
         $values = $this->monthlyBalanceService->calculate($year, $month);
           
         $incomesBalance = $values['incomes'];
@@ -70,6 +67,9 @@ class MonthsController extends Controller
         $balanceAvailable = $values['balanceAvailable'];
         $balance = $values['balance'];
         $banlaceMonthPrevious = $values['banlaceMonthPrevious'];
+
+        $filteredIncomesTotal = $typeIncomes->sum('amount') + $banlaceMonthPrevious;
+        $filteredExpensesTotal = $typeExpenses->sum('amount');
 
         return view('months.show', compact(
                                             'expenses',

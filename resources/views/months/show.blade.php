@@ -1,9 +1,8 @@
-@extends('layouts.app')
+<x-app-layout>
 
-@section('content')
     @if ($expenses->isEmpty())
         @include('months.empty')
     @else
         @include('expenses.index')
     @endif
-@endsection
+</x-app-layout>

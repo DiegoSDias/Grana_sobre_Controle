@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Categories extends Model
+class Category extends Model
 {
     protected $fillable = [
         'user_id',
@@ -16,7 +16,7 @@ class Categories extends Model
     ];
 
     public function expenses(): HasMany {
-        return $this->hasMany(Expenses::class);
+        return $this->hasMany(Expense::class);
     }
 
     public function user(): BelongsTo {
@@ -24,6 +24,6 @@ class Categories extends Model
     }
 
     public function group(): BelongsTo {
-        return $this->belongsTo(Groups::class);
+        return $this->belongsTo(Group::class);
     }
 }

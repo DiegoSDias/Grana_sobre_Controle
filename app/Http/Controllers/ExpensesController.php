@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Categories;
-use App\Models\Expenses;
+use App\Models\Category;
+use App\Models\Expense;
 use App\Services\ExpenseService;
 use Illuminate\Http\Request;
 use Str;
@@ -34,7 +34,7 @@ class ExpensesController extends Controller
         $type = $request->type;
         $year = $request->year;
         $month = $request->month;
-        $categories = Categories::where('type', $type)->get();
+        $categories = Category::where('type', $type)->get();
         
         return view('expenses.create', compact('type', 'year', 'month', 'categories'));
     }
@@ -80,11 +80,11 @@ class ExpensesController extends Controller
     public function edit(string $id)
     {
         
-        $expense = Expenses::where('id', $id)->first();
+        $expense = Expense::where('id', $id)->first();
         $type = $expense->type;
         $year = $expense->year;
         $month = $expense->month;
-        $categories = Categories::where('type', $type)->get();
+        $categories = Category::where('type', $type)->get();
         if($expense->is_installment) {
             $expense->amount = round($expense->total_installments * $expense->amount);
         }
@@ -112,14 +112,14 @@ class ExpensesController extends Controller
         $data['date'] = now()->format('Y-m-d');
 
         if(!empty($data['is_installment'])) {
-            $expense = Expenses::findOrFail($id);
+            $expense = Expense::findOrFail($id);
             $data['current_installment'] = $expense->current_installment;
             if($expense->installments_group) {
-                $expense = Expenses::where('installments_group', $expense->installments_group)
+                $expense = Expense::where('installments_group', $expense->installments_group)
                                     ->firstOrFail();
             }
         } else {
-             $expense = Expenses::findOrFail($id);
+             $expense = Expense::findOrFail($id);
         }
         $this->expenseService->update($expense, $data);
         
@@ -131,7 +131,7 @@ class ExpensesController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Expenses $expense)
+    public function destroy(Expense $expense)
     {
         $this->expenseService->destroy($expense);
 

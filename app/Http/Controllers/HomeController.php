@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 
 class HomeController extends Controller
 {
-    public function index(){
+    public function index(Request $request){
         $meses = [
             ['numero' => '01', 'nome' => 'Janeiro', 'cor' => 'from-blue-500 to-blue-600'],
             ['numero' => '02', 'nome' => 'Fevereiro', 'cor' => 'from-pink-500 to-pink-600'],
@@ -22,6 +22,8 @@ class HomeController extends Controller
             ['numero' => '12', 'nome' => 'Dezembro', 'cor' => 'from-rose-500 to-rose-600'],
         ];
 
-        return view('home', compact('meses'));
+        $anoSelecionado = $request->year ?? date('Y');
+
+        return view('dashboard', compact('meses', 'anoSelecionado'));
 }
 }

@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\Expenses;
+use App\Models\Expense;
 use App\Models\MonthlyBalance;
 
 class MonthlyBalanceService
@@ -12,7 +12,7 @@ class MonthlyBalanceService
      */
     public function calculate(int $year, int $month): array
     {
-        $incomes = Expenses::where('type', 'income')
+        $incomes = Expense::where('type', 'income')
             ->where('year', $year)
             ->where('month', $month)
             ->sum('amount');
@@ -27,13 +27,13 @@ class MonthlyBalanceService
         
         $incomes += $banlaceMonthPrevious;
 
-        $expensesNormal = Expenses::where('type', 'expense')
+        $expensesNormal = Expense::where('type', 'expense')
             ->where('year', $year)
             ->where('month', $month)
             ->where('payment_mode', '!=', 'pix')
             ->sum('amount');
 
-        $expensesPix = Expenses::where('type', 'expense')
+        $expensesPix = Expense::where('type', 'expense')
             ->where('year', $year)
             ->where('month', $month)
             ->where('payment_mode', 'pix')
