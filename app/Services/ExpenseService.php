@@ -50,6 +50,7 @@ class ExpenseService
                 'date' => $data['date'],
                 'month' => $data['month'],
                 'year' => $data['year'],
+                'payment_mode' => $data['payment_mode'],
                 'type' => $data['type'],
                 'description' => $data['description'] ?? null,
                 'amount' => $data['amount'],
@@ -74,6 +75,7 @@ class ExpenseService
                 'date' => $data['date'],
                 'month' => $date->month,
                 'year' => $date->year,
+                'payment_mode' => $data['payment_mode'],
                 'type' => $data['type'],
                 'description' => $data['description'] ?? null,
                 'amount' => $valueInstallment,
@@ -155,13 +157,15 @@ class ExpenseService
     }
 
     private function updateSingleExpense(Expense $expense, array $data) {
-
+    
         $expense->update([
                 'category_id' => $data['category_id'],
+                'payment_mode' => $data['payment_mode'],
                 'type' => $data['type'],
                 'description' => $data['description'] ?? null,
                 'amount' => $data['amount'],
             ]);
+
     }
 
     public function destroy(Expense $expense) {

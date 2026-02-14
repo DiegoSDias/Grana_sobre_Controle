@@ -9,6 +9,7 @@ class MonthlyBalance extends Model
 {
     protected $fillable = [
         'user_id',
+        'year',
         'month',
         'closing_balance'
     ];

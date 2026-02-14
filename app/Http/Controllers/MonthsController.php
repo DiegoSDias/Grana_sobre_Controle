@@ -66,9 +66,9 @@ class MonthsController extends Controller
         $expensesPix = $values['expensesPix'];
         $balanceAvailable = $values['balanceAvailable'];
         $balance = $values['balance'];
-        $banlaceMonthPrevious = $values['banlaceMonthPrevious'];
+        $balanceMonthPrevious = $values['balanceMonthPrevious'];
 
-        $filteredIncomesTotal = $typeIncomes->sum('amount') + $banlaceMonthPrevious;
+        $filteredIncomesTotal = $typeIncomes->sum('amount') + $balanceMonthPrevious;
         $filteredExpensesTotal = $typeExpenses->sum('amount');
 
         return view('months.show', compact(
@@ -86,13 +86,12 @@ class MonthsController extends Controller
                                             'expensesPix',
                                             'balanceAvailable',
                                             'balance',
-                                            'banlaceMonthPrevious'
+                                            'balanceMonthPrevious'
                                             ));
     }
 
     public function close(int $year, int $month) {
-        $monthYear = $year . '-' . $month;
-        $this->monthlyBalanceService->closeMonth($year, $month, $monthYear);
+        $this->monthlyBalanceService->closeMonth($year, $month);
 
         return back()->with('success', 'Mês fechado com sucesso.');
     }

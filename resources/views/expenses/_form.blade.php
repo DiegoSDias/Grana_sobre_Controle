@@ -12,7 +12,6 @@
             class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm hover:border-slate-300"
             value="{{ old('description', $expense->description ?? '') }}"
             placeholder="Ex: Compra no supermercado"
-            required
         >
         @error('description')
             <p class="mt-1.5 text-sm text-red-600 flex items-center gap-1">

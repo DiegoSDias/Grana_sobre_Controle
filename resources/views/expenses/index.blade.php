@@ -43,7 +43,7 @@
             
             <x-filter-incomes :categoriesIncome="$categoriesIncome"/>
 
-            @if ($typeIncomes->isEmpty() && !$banlaceMonthPrevious)
+            @if ($typeIncomes->isEmpty() && !$balanceMonthPrevious)
                 <div class="p-16 text-center">
                     <div class="w-20 h-20 mx-auto mb-4 rounded-2xl bg-slate-50 flex items-center justify-center">
                         <svg class="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -65,7 +65,7 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
-                            @if($banlaceMonthPrevious > 0)
+                            @if($balanceMonthPrevious > 0)
                                 <tr class="hover:bg-emerald-50/30 transition-colors group">
                                     <td class="px-6 py-4 text-sm text-slate-500 italic">Saldo anterior</td>
                                     <td class="px-6 py-4">
@@ -74,7 +74,7 @@
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 text-right text-emerald-700 font-semibold text-base">
-                                        R$ {{ number_format($banlaceMonthPrevious, 2, ',', '.') }}
+                                        R$ {{ number_format($balanceMonthPrevious, 2, ',', '.') }}
                                     </td>
                                     <td class="px-6 py-4"></td>
                                 </tr>

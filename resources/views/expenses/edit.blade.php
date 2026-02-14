@@ -1,6 +1,4 @@
-@extends('layouts.app')
-
-@section('content')
+<x-app-layout>
     <div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-8">
         <div class="max-w-3xl mx-auto px-4">
             
@@ -123,4 +121,4 @@
             })
         })
     </script>
-@endsection
+</x-app-layout>

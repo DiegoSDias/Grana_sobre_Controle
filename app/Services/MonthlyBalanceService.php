@@ -17,15 +17,23 @@ class MonthlyBalanceService
             ->where('month', $month)
             ->sum('amount');
 
-        $currentMonth = $year . '-' . $month;
-        $previousMonth = MonthlyBalance::where('user_id', auth()->id())
-        ->where('month', '<', $currentMonth)
-        ->orderBy('month', 'desc')
-        ->first();
+
+        if ($month == 1) {
+            $previousMonthNumber = 12;
+            $previousYear = $year - 1;
+        } else {
+            $previousMonthNumber = $month - 1;
+            $previousYear = $year;
+        }
+
+        $previousBalance = MonthlyBalance::where('user_id', auth()->id())
+            ->where('year', $previousYear)
+            ->where('month', $previousMonthNumber)
+            ->first();
+
+        $balanceMonthPrevious = $previousBalance?->closing_balance ?? 0;
         
-        $banlaceMonthPrevious = $previousMonth?->closing_balance ?? 0;
-        
-        $incomes += $banlaceMonthPrevious;
+        $incomes += $balanceMonthPrevious;
 
         $expensesNormal = Expense::where('type', 'expense')
             ->where('year', $year)
@@ -48,18 +56,19 @@ class MonthlyBalanceService
             'expensesPix' => $expensesPix,
             'balance' => $balanceMonth,
             'balanceAvailable' => $balanceAvailable,
-            'banlaceMonthPrevious' => $banlaceMonthPrevious
+            'balanceMonthPrevious' => $balanceMonthPrevious
             ];
     }
 
-    public function closeMonth(int $year, int $month, String $monthYear): void
+    public function closeMonth(int $year, int $month): void
     {
         $balance = $this->calculate($year, $month);
 
         MonthlyBalance::updateOrCreate(
             [
                 'user_id' => auth()->id(),
-                'month' => $monthYear,
+                'year' => $year,
+                'month' => $month,
             ],
             [
                 'closing_balance' => $balance['balanceAvailable'],

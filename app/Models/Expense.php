@@ -13,6 +13,7 @@ class Expense extends Model
         'date',
         'month',
         'year',
+        'payment_mode',
         'type',
         'description',
         'amount',
