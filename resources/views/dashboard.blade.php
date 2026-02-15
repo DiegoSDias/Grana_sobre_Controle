@@ -14,7 +14,7 @@
                             Acompanhe suas finanças mensalmente
                         </p>
                     </div>
-                    <div class="text-right">
+                    <div class="text-center">
                         <p class="text-sm text-slate-400 font-medium uppercase tracking-wider mb-3">Ano</p>
                         <div class="flex items-center gap-3 justify-end">
                             @php
@@ -83,10 +83,10 @@
                                         d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                             </div>
-                            <span class="text-sm font-medium text-slate-600 uppercase tracking-wide">Total Anual</span>
+                            <span class="text-sm font-medium text-slate-600 uppercase tracking-wide">Total Anual de Gastos</span>
                         </div>
                         <p class="text-4xl font-light text-slate-900 mb-1">
-                            R$ {{ number_format($totalAnual ?? 0, 2, ',', '.') }}
+                            R$ {{ number_format($totalExpense ?? 0, 2, ',', '.') }}
                         </p>
                         <p class="text-xs text-slate-400">Acumulado em {{ $anoSelecionado }}</p>
                     </div>
@@ -142,6 +142,7 @@
                     </div>
                 </div>
             </div>
+
 
             <!-- Months Grid -->
             <div class="mb-8">

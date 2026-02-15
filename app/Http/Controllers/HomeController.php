@@ -59,10 +59,19 @@ class HomeController extends Controller
                 ->groupBy('month')
                 ->pluck('total', 'month');
 
+            $totalExpense = Expense::where('type', 'expense')
+                ->where('year', $anoSelecionado)
+                ->sum('amount');
+
+            $mediaAnual = $totalExpense / count($expenseBalance);
+            $maiorGasto = $expenseBalance->max();
  
         return view('dashboard', compact('meses', 
                                         'anoSelecionado', 
                                         'expenseBalance',
-                                        'finalIncomeBalance'));
+                                        'finalIncomeBalance',
+                                        'totalExpense',
+                                        'mediaAnual',
+                                        'maiorGasto'));
 }
 }

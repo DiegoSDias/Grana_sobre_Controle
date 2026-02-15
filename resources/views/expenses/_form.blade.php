@@ -197,7 +197,7 @@
         </div>
 
         {{-- Total de parcelas --}}
-        <div class="hidden" id="installmentsField">
+        <div id="installmentsField" class="hidden" >
             <label class="block text-sm font-semibold text-slate-700 mb-2">
                 Total de parcelas
                 <span class="text-red-500">*</span>
@@ -220,3 +220,28 @@
     <input type="hidden" name="type" value="{{ $type }}">
 
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const installmentRadios = document.querySelectorAll('input[name="is_installment"]');
+        const installmentsField = document.getElementById('installmentsField');
+
+        function toggleInstallmentsField() {
+            const selected = document.querySelector('input[name="is_installment"]:checked');
+            
+            if (selected && selected.value === '1') {
+                installmentsField.classList.remove('hidden');
+            } else {
+                installmentsField.classList.add('hidden');
+            }
+        }
+
+        // Verifica ao carregar a página
+        toggleInstallmentsField();
+
+        // Escuta mudança
+        installmentRadios.forEach(radio => {
+            radio.addEventListener('change', toggleInstallmentsField);
+        });
+    });
+</script>
