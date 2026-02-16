@@ -60,6 +60,7 @@
                             <tr>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Descrição</th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Categoria</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Data</th>
                                 <th class="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Valor</th>
                                 <th class="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider w-32">Ações</th>
                             </tr>
@@ -73,6 +74,7 @@
                                             Sobra do mês passado
                                         </span>
                                     </td>
+                                    <td class="px-6 py-4"></td>
                                     <td class="px-6 py-4 text-right text-emerald-700 font-semibold text-base">
                                         R$ {{ number_format($balanceMonthPrevious, 2, ',', '.') }}
                                     </td>
@@ -90,6 +92,9 @@
                                         @else
                                             <span class="text-slate-400 text-xs">—</span>
                                         @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-emerald-700 font-semibold text-base">
+                                        {{ $income->date->format('d/m/Y') }}
                                     </td>
                                     <td class="px-6 py-4 text-right text-emerald-700 font-semibold text-base">
                                         R$ {{ number_format($income->amount, 2, ',', '.') }}
@@ -117,7 +122,7 @@
                                 </tr>
                             @endforeach
                             <tr class="bg-emerald-50 border-t-2 border-emerald-200">
-                                <td class="px-6 py-4 font-bold text-slate-800 text-sm uppercase tracking-wide" colspan="2">Total de Receitas</td>
+                                <td class="px-6 py-4 font-bold text-slate-800 text-sm uppercase tracking-wide" colspan="3">Total de Receitas</td>
                                 <td class="px-6 py-4 text-right text-emerald-700 font-bold text-xl">
                                     R$ {{ number_format($filteredIncomesTotal, 2, ',', '.') }}
                                 </td>
@@ -162,6 +167,7 @@
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Descrição</th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Categoria</th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Pagamento</th>
+                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Data</th>
                                 <th class="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Valor</th>
                                 <th class="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Parcelas</th>
                                 <th class="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider w-32">Ações</th>
@@ -185,6 +191,9 @@
                                             {{ $expense->payment_mode === 'pix' ? 'bg-purple-50 text-purple-700 border border-purple-100' : 'bg-amber-50 text-amber-700 border border-amber-100' }}">
                                             {{ ucfirst($expense->payment_mode) }}
                                         </span>
+                                    </td>
+                                    <td class="px-6 py-4 text-right text-emerald-700 font-semibold text-base">
+                                        {{ $expense->date->format('d/m/Y') }}
                                     </td>
                                     <td class="px-6 py-4 text-right text-rose-700 font-semibold text-base">
                                         R$ {{ number_format($expense->amount, 2, ',', '.') }}
@@ -221,7 +230,7 @@
                                 </tr>
                             @endforeach
                             <tr class="bg-rose-50 border-t-2 border-rose-200">
-                                <td class="px-6 py-4 font-bold text-slate-800 text-sm uppercase tracking-wide" colspan="3">Total de Despesas</td>
+                                <td class="px-6 py-4 font-bold text-slate-800 text-sm uppercase tracking-wide" colspan="4">Total de Despesas</td>
                                 <td class="px-6 py-4 text-right text-rose-700 font-bold text-xl">
                                     R$ {{ number_format($filteredExpensesTotal, 2, ',', '.') }}
                                 </td>

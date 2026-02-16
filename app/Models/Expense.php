@@ -30,4 +30,8 @@ class Expense extends Model
     public function category(): BelongsTo {
         return $this->belongsTo(Category::class);
     }
+
+    protected $casts = [
+        'date' => 'date',
+    ];
 }

@@ -39,6 +39,9 @@ class MonthsController extends Controller
                                 ->when($request->income_value, function ($q) use ($request) {
                                     $q->where('amount', $request->income_value_op, $request->income_value);
                                 })
+                                ->when($request->date_value, function ($q) use ($request) {
+                                    $q->where('date', $request->date_value, $request->date_value);
+                                })
                                 ->get();
 
         $typeExpenses = Expense::with('category')
@@ -56,6 +59,9 @@ class MonthsController extends Controller
                                 })
                                 ->when($request->expense_value, function($q) use ($request) {
                                     $q->where('amount', $request->expense_value_op, $request->expense_value);
+                                })
+                                ->when($request->date_value, function ($q) use ($request) {
+                                    $q->where('date', $request->date_value, $request->date_value);
                                 })
                                 ->get();
         

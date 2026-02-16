@@ -46,6 +46,7 @@ class ExpensesController extends Controller
     {
         $data = $request->validate([
             'description' => 'nullable|string|max:255',
+            'date' => 'required|date',
             'amount' => 'required|numeric|min:0.01',
             'category_id' => 'nullable',
             'new_category' => 'nullable|string|max:100',
