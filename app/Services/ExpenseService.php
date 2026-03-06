@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Category;
 use App\Models\Expense;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 
@@ -33,7 +34,7 @@ class ExpenseService
         }
 
         $category = Category::create([
-            'user_id' => auth()->id(),
+            'user_id' => Auth::id(),
             'name' => $data['new_category'],
             'type' => $data['type']
         ]);
@@ -45,12 +46,12 @@ class ExpenseService
     private function createSingleExpense(array $data) {
 
         Expense::create([
-                'user_id' => auth()->id(),
+                'user_id' => Auth::id(),
                 'category_id' => $data['category_id'],
                 'date' => $data['date'],
                 'month' => $data['month'],
                 'year' => $data['year'],
-                'payment_mode' => $data['payment_mode'],
+                'payment_mode' => $data['payment_mode'] ?? null,
                 'type' => $data['type'],
                 'description' => $data['description'] ?? null,
                 'amount' => $data['amount'],
@@ -70,7 +71,7 @@ class ExpenseService
             $date = $baseDate->copy()->addMonths($i - 1);
 
             Expense::create([
-                'user_id' => auth()->id(),
+                'user_id' => Auth::id(),
                 'category_id' => $data['category_id'],
                 'date' => $data['date'],
                 'month' => $date->month,
@@ -160,7 +161,7 @@ class ExpenseService
     
         $expense->update([
                 'category_id' => $data['category_id'],
-                'payment_mode' => $data['payment_mode'],
+                'payment_mode' => $data['payment_mode'] ?? null,
                 'type' => $data['type'],
                 'description' => $data['description'] ?? null,
                 'amount' => $data['amount'],

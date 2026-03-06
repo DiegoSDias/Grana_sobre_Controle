@@ -50,7 +50,7 @@ class ExpensesController extends Controller
             'amount' => 'required|numeric|min:0.01',
             'category_id' => 'nullable',
             'new_category' => 'nullable|string|max:100',
-            'payment_mode' => 'required|in:pix,cartao',
+            'payment_mode' => 'nullable|required_if:type,expense|in:pix,cartao',
             'type' => 'required|in:income,expense',
             'is_installment' => 'boolean',
             'total_installments' => 'nullable|required_if:is_installment,true|integer|min:2'
@@ -104,7 +104,7 @@ class ExpensesController extends Controller
             'amount' => 'required|numeric|min:0.01',
             'category_id' => 'nullable',
             'new_category' => 'nullable|string|max:100',
-            'payment_mode' => 'required|in:pix,cartao',
+            'payment_mode' => 'nullable|required_if:type,expense|in:pix,cartao',
             'type' => 'required|in:income,expense',
             'is_installment' => 'boolean',
             'total_installments' => 'nullable|required_if:is_installment,true|integer|min:2'

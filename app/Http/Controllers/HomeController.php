@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Expense;
 use App\Models\MonthlyBalance;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class HomeController extends Controller
 {
@@ -40,7 +41,7 @@ class HomeController extends Controller
                 ->groupBy('month')
                 ->pluck('total', 'month');
 
-            $closingBalances = MonthlyBalance::where('user_id', auth()->id())
+            $closingBalances = MonthlyBalance::where('user_id', Auth::id())
                 ->where('year', $anoSelecionado)
                 ->pluck('closing_balance', 'month');
 

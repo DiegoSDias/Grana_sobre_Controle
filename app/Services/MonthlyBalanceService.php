@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Expense;
 use App\Models\MonthlyBalance;
+use Illuminate\Support\Facades\Auth;
 
 class MonthlyBalanceService
 {
@@ -26,7 +27,7 @@ class MonthlyBalanceService
             $previousYear = $year;
         }
 
-        $previousBalance = MonthlyBalance::where('user_id', auth()->id())
+        $previousBalance = MonthlyBalance::where('user_id', Auth::id())
             ->where('year', $previousYear)
             ->where('month', $previousMonthNumber)
             ->first();
@@ -66,7 +67,7 @@ class MonthlyBalanceService
 
         MonthlyBalance::updateOrCreate(
             [
-                'user_id' => auth()->id(),
+                'user_id' => Auth::id(),
                 'year' => $year,
                 'month' => $month,
             ],
