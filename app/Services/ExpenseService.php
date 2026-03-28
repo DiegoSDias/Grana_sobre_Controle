@@ -158,11 +158,12 @@ class ExpenseService
     }
 
     private function updateSingleExpense(Expense $expense, array $data) {
-    
+
         $expense->update([
                 'category_id' => $data['category_id'],
                 'payment_mode' => $data['payment_mode'] ?? null,
                 'type' => $data['type'],
+                'date' => $data['date'],
                 'description' => $data['description'] ?? null,
                 'amount' => $data['amount'],
             ]);

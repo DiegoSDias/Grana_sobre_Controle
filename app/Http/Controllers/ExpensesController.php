@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ExpensesRequest;
 use App\Models\Category;
 use App\Models\Expense;
 use App\Services\ExpenseService;
@@ -42,21 +43,10 @@ class ExpensesController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(ExpensesRequest $request)
     {
-        $data = $request->validate([
-            'description' => 'nullable|string|max:255',
-            'date' => 'required|date',
-            'amount' => 'required|numeric|min:0.01',
-            'category_id' => 'nullable',
-            'new_category' => 'nullable|string|max:100',
-            'payment_mode' => 'nullable|required_if:type,expense|in:pix,cartao',
-            'type' => 'required|in:income,expense',
-            'is_installment' => 'boolean',
-            'total_installments' => 'nullable|required_if:is_installment,true|integer|min:2'
-        ]);
+        $data = $request->validated();
 
-        $data['date'] = now()->format('Y-m-d');
         $data['year'] = $request->year;
         $data['month'] = $request->month;
 
@@ -97,22 +87,12 @@ class ExpensesController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(ExpensesRequest $request, string $id)
     {
-        $data = $request->validate([
-            'description' => 'nullable|string|max:255',
-            'amount' => 'required|numeric|min:0.01',
-            'category_id' => 'nullable',
-            'new_category' => 'nullable|string|max:100',
-            'payment_mode' => 'nullable|required_if:type,expense|in:pix,cartao',
-            'type' => 'required|in:income,expense',
-            'is_installment' => 'boolean',
-            'total_installments' => 'nullable|required_if:is_installment,true|integer|min:2'
-        ]);
+        $data = $request->validated();
 
         $data['year'] = $request->year;
         $data['month'] = $request->month;
-        $data['date'] = now()->format('Y-m-d');
 
         if(!empty($data['is_installment'])) {
             $expense = Expense::findOrFail($id);
