@@ -13,7 +13,8 @@ class MonthlyBalanceService
      */
     public function calculate(int $year, int $month): array
     {
-        $incomes = Expense::where('type', 'income')
+        $incomes = Expense::where('user_id', Auth::id())
+            ->where('type', 'income')
             ->where('year', $year)
             ->where('month', $month)
             ->sum('amount');
@@ -36,13 +37,15 @@ class MonthlyBalanceService
         
         $incomes += $balanceMonthPrevious;
 
-        $expensesNormal = Expense::where('type', 'expense')
+        $expensesNormal = Expense::where('user_id', Auth::id())
+            ->where('type', 'expense')
             ->where('year', $year)
             ->where('month', $month)
             ->where('payment_mode', '!=', 'pix')
             ->sum('amount');
 
-        $expensesPix = Expense::where('type', 'expense')
+        $expensesPix = Expense::where('user_id', Auth::id())
+            ->where('type', 'expense')
             ->where('year', $year)
             ->where('month', $month)
             ->where('payment_mode', 'pix')

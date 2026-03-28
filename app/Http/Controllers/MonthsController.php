@@ -7,7 +7,7 @@ use App\Models\Expense;
 use App\Models\MonthlyBalance;
 use App\Services\MonthlyBalanceService;
 use Illuminate\Http\Request;
-
+use Illuminate\Support\Facades\Auth;
 
 class MonthsController extends Controller
 {
@@ -19,17 +19,21 @@ class MonthsController extends Controller
 
     public function show(Request $request ,String $year, String $month) {
 
-        $expenses = Expense::where('month', $month)
+        $expenses = Expense::where('user_id', Auth::id())
+            ->where('month', $month)
             ->where('year', $year)
             ->get();
 
-        $categoriesIncome = Category::where('type', 'income')
+        $categoriesIncome = Category::where('user_id', Auth::id())
+                                ->where('type', 'income')
                                 ->get();
 
-        $categoriesExpense = Category::where('type', 'expense')
+        $categoriesExpense = Category::where('user_id', Auth::id())
+                                ->where('type', 'expense')
                                 ->get();
 
         $typeIncomes = Expense::with('category')
+                                ->where('user_id', Auth::id())
                                 ->where('type', 'income')
                                 ->where('month', $month)
                                 ->where('year', $year)
@@ -45,6 +49,7 @@ class MonthsController extends Controller
                                 ->get();
 
         $typeExpenses = Expense::with('category')
+                                ->where('user_id', Auth::id())
                                 ->where('type', 'expense')
                                 ->where('month', $month)
                                 ->where('year', $year)

@@ -35,7 +35,8 @@ class HomeController extends Controller
 
         $anoSelecionado = $request->year ?? date('Y');
 
-            $incomeBalance = Expense::where('type', 'income')
+            $incomeBalance = Expense::where('user_id', Auth::id())
+                ->where('type', 'income')
                 ->where('year', $anoSelecionado)
                 ->selectRaw('month, SUM(amount) as total')
                 ->groupBy('month')
@@ -54,17 +55,23 @@ class HomeController extends Controller
             }
 
 
-            $expenseBalance = Expense::where('type', 'expense')
+            $expenseBalance = Expense::where('user_id', Auth::id())
+                ->where('type', 'expense')
                 ->where('year', $anoSelecionado)
                 ->selectRaw('month, SUM(amount) as total')
                 ->groupBy('month')
                 ->pluck('total', 'month');
 
-            $totalExpense = Expense::where('type', 'expense')
+            $totalExpense = Expense::where('user_id', Auth::id())
+                ->where('type', 'expense')
                 ->where('year', $anoSelecionado)
                 ->sum('amount');
 
-            $mediaAnual = $totalExpense / count($expenseBalance);
+            if(count($expenseBalance) == 0){
+                $mediaAnual = 0;
+            } else{
+                $mediaAnual = $totalExpense / count($expenseBalance);
+            }
             $maiorGasto = $expenseBalance->max();
  
         return view('dashboard', compact('meses', 

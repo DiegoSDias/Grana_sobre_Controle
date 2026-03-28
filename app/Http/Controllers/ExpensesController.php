@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Expense;
 use App\Services\ExpenseService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Str;
 
 class ExpensesController extends Controller
@@ -35,7 +36,9 @@ class ExpensesController extends Controller
         $type = $request->type;
         $year = $request->year;
         $month = $request->month;
-        $categories = Category::where('type', $type)->get();
+        $categories = Category::where('user_id', Auth::id())
+                    ->where('type', $type)
+                    ->get();
         
         return view('expenses.create', compact('type', 'year', 'month', 'categories'));
     }
@@ -72,11 +75,11 @@ class ExpensesController extends Controller
     public function edit(string $id)
     {
         
-        $expense = Expense::where('id', $id)->first();
+        $expense = Expense::where('user_id', Auth::id())->where('id', $id)->first();
         $type = $expense->type;
         $year = $expense->year;
         $month = $expense->month;
-        $categories = Category::where('type', $type)->get();
+        $categories = Category::where('user_id', Auth::id())->where('type', $type)->get();
         if($expense->is_installment) {
             $expense->amount = round($expense->total_installments * $expense->amount);
         }
