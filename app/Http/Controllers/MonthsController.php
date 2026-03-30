@@ -81,6 +81,7 @@ class MonthsController extends Controller
 
         $filteredIncomesTotal = $typeIncomes->sum('amount') + $balanceMonthPrevious;
         $filteredExpensesTotal = $typeExpenses->sum('amount');
+        
 
         return view('months.show', compact(
                                             'expenses',

@@ -66,7 +66,7 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
-                            @if($balanceMonthPrevious > 0)
+                            @if($balanceMonthPrevious)
                                 <tr class="hover:bg-emerald-50/30 transition-colors group">
                                     <td class="px-6 py-4 text-sm text-slate-500 italic">Saldo anterior</td>
                                     <td class="px-6 py-4">

@@ -52,6 +52,7 @@ class MonthlyBalanceService
             ->sum('amount');
 
         $balanceMonth = $incomes - $expensesNormal;
+
         $balanceAvailable = $balanceMonth - $expensesPix;
 
         return [
