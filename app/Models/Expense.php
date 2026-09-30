@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Auth;
 
 class Expense extends Model
 {
@@ -23,6 +25,10 @@ class Expense extends Model
         'installments_group'
     ];
 
+    protected $casts = [
+        'date' => 'date',
+    ];
+
     public function user(): BelongsTo {
         return $this->belongsTo(User::class);
     }
@@ -31,7 +37,30 @@ class Expense extends Model
         return $this->belongsTo(Category::class);
     }
 
-    protected $casts = [
-        'date' => 'date',
-    ];
+    public function scopeFromUser(Builder $query, int $userId)
+    {
+        return $query->where('user_id', $userId);
+    }
+
+    public function scopeIncome(Builder $query)
+    {
+        return $query->where('type', 'income');
+    }
+
+    public function scopeExpense(Builder $query)
+    {
+        return $query->where('type', 'expense');
+    }
+
+    public function scopeYear(Builder $query, int $year)
+    {
+        return $query->where('year', $year);
+    }
+
+    public function scopeGroupedByMonth(Builder $query): Builder
+    {
+        return $query
+            ->selectRaw('month, SUM(amount) as total')
+            ->groupBy('month');
+    }
 }

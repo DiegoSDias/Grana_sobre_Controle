@@ -86,7 +86,7 @@
                             <span class="text-sm font-medium text-slate-600 uppercase tracking-wide">Total Anual de Gastos</span>
                         </div>
                         <p class="text-4xl font-light text-slate-900 mb-1">
-                            R$ {{ number_format($totalExpense ?? 0, 2, ',', '.') }}
+                            R$ {{ number_format($data['totalExpense'] ?? 0, 2, ',', '.') }}
                         </p>
                         <p class="text-xs text-slate-400">Acumulado em {{ $anoSelecionado }}</p>
                     </div>
@@ -108,7 +108,7 @@
                             <span class="text-sm font-medium text-slate-600 uppercase tracking-wide">Média Mensal</span>
                         </div>
                         <p class="text-4xl font-light text-slate-900 mb-1">
-                            R$ {{ number_format($mediaAnual ?? 0, 2, ',', '.') }}
+                            R$ {{ number_format($data['mediaAnual'] ?? 0, 2, ',', '.') }}
                         </p>
                         <p class="text-xs text-slate-400">Por mês em {{ $anoSelecionado }}</p>
                     </div>
@@ -132,8 +132,8 @@
                             <span class="text-sm font-medium text-slate-600 uppercase tracking-wide">Maior Gasto</span>
                         </div>
                         <p class="text-4xl font-light text-slate-900 mb-1">
-                            @if (isset($maiorGasto) && $maiorGasto > 0)
-                                R$ {{ number_format($maiorGasto, 2, ',', '.') }}
+                            @if (isset($data['maiorGasto']) && $data['maiorGasto'] > 0)
+                                R$ {{ number_format($data['maiorGasto'], 2, ',', '.') }}
                             @else
                                 —
                             @endif
@@ -148,7 +148,7 @@
             <div class="mb-8">
                 <h2 class="text-2xl font-light text-slate-900 mb-6">Meses</h2>
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    @foreach ($meses as $mes)
+                    @foreach ($data['meses'] as $mes)
                         <a href="{{ route('month.show', ['year' => $anoSelecionado, 'month' => $mes['numero']]) }}"
                             class="group relative overflow-hidden bg-white rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all duration-500 border border-slate-100 hover:border-slate-200 animate-scale-in"
                             style="animation-delay: {{ $loop->index * 0.05 }}s">
@@ -183,7 +183,7 @@
                                                 Total de entrada
                                             </p>
                                             <p class="text-xl font-light text-white">
-                                                R$ {{ number_format($finalIncomeBalance[$mes['numero']] ?? 0, 2, ',', '.') }}
+                                                R$ {{ number_format($data['finalIncomeBalance'][$mes['numero']] ?? 0, 2, ',', '.') }}
                                             </p>
                                         </div>
                                         <div class="h-px bg-white/20"></div>
@@ -192,7 +192,7 @@
                                                 Total de despesas
                                             </p>
                                             <p class="text-xl font-light text-white">
-                                                R$ {{ number_format($expenseBalance[$mes['numero']] ?? 0, 2, ',', '.') }}
+                                                R$ {{ number_format($data['expenseBalance'][$mes['numero']] ?? 0, 2, ',', '.') }}
                                             </p>
                                         </div>
                                     </div>
