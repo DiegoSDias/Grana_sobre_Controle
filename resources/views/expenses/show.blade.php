@@ -1,10 +1,10 @@
 <x-app-layout>
     <div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-8">
         <div class="max-w-3xl mx-auto px-4">
-            
+
             {{-- Header --}}
             <div class="mb-6 animate-fade-in">
-                <a href="{{ url()->previous() }}" 
+                <a href="{{ url()->previous() }}"
                    class="group inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors mb-4">
                     <svg class="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
@@ -77,9 +77,9 @@
                                 Forma de pagamento
                             </label>
                             <div class="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl">
-                                <span class="px-3 py-1 rounded-full text-sm font-medium 
+                                <span class="px-3 py-1 rounded-full text-sm font-medium
                                     {{ $expense->payment_mode === 'pix' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700' }}">
-                                    
+
                                     {{ ucfirst($expense->payment_mode) }}
                                 </span>
                             </div>
@@ -106,7 +106,7 @@
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        
+
         * {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         }
