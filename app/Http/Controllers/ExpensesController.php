@@ -66,7 +66,9 @@ class ExpensesController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $expense = $this->expenseService->show($id);
+
+        return view('expenses.show', compact('expense'));
     }
 
     /**

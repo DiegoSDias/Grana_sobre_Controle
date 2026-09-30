@@ -5,7 +5,7 @@
     <div class="flex flex-wrap gap-4 items-end">
         
         {{-- Categoria --}}
-        <div class="flex-1 min-w-[180px]">
+        <div class="flex-1 max-w-[180px]">
             <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Categoria</label>
             <select name="expense_category"
                 class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-all shadow-sm hover:border-slate-300">
@@ -19,18 +19,18 @@
         </div>
 
         {{-- Método de Pagamento --}}
-        <div class="w-44">
+        <div class="w-24">
             <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Pagamento</label>
             <select name="payment_mode"
                 class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-all shadow-sm hover:border-slate-300">
-                <option value="">Todos os métodos</option>
+                <option value="">Todos</option>
                 <option value="cartao" @selected(request('payment_mode') === 'cartao')>Cartão</option>
                 <option value="pix" @selected(request('payment_mode') === 'pix')>Pix</option>
             </select>
         </div>
 
         {{-- Parcelado --}}
-        <div class="w-36">
+        <div class="w-24">
             <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Parcelado</label>
             <select name="is_installment"
                 class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition-all shadow-sm hover:border-slate-300">

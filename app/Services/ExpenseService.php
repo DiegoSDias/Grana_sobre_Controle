@@ -28,6 +28,11 @@ class ExpenseService
 
     }
 
+    public function show(string $id) {
+        $data = Expense::with('category')->findOrFail($id);
+        return $data;
+    }
+
     private function resolveCategory(array $data) {
         if($data['category_id'] !== 'new') {
             return $data['category_id'];

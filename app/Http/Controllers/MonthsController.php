@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Expense;
-use App\Models\MonthlyBalance;
 use App\Services\MonthlyBalanceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -68,10 +67,11 @@ class MonthsController extends Controller
                                 ->when($request->date_value, function ($q) use ($request) {
                                     $q->where('date', $request->date_value, $request->date_value);
                                 })
+                                ->orderBy('date')
                                 ->get();
         
         $values = $this->monthlyBalanceService->calculate($year, $month);
-          
+
         $incomesBalance = $values['incomes'];
         $expensesBalance = $values['expenses'];
         $expensesPix = $values['expensesPix'];

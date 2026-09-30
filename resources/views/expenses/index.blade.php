@@ -58,24 +58,22 @@
                     <table class="w-full">
                         <thead class="bg-slate-50 border-b border-slate-200">
                             <tr>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Descrição</th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Categoria</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Data</th>
-                                <th class="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Valor</th>
-                                <th class="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider w-32">Ações</th>
+                                <th class="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Data</th>
+                                <th class="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Valor</th>
+                                <th class="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider w-32">Ações</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             @if($balanceMonthPrevious)
                                 <tr class="hover:bg-emerald-50/30 transition-colors group">
-                                    <td class="px-6 py-4 text-sm text-slate-500 italic">Saldo anterior</td>
                                     <td class="px-6 py-4">
                                         <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
                                             Sobra do mês passado
                                         </span>
                                     </td>
                                     <td class="px-6 py-4"></td>
-                                    <td class="px-6 py-4 text-right text-emerald-700 font-semibold text-base">
+                                    <td class="px-6 py-4 text-center text-emerald-700 font-semibold text-base">
                                         R$ {{ number_format($balanceMonthPrevious, 2, ',', '.') }}
                                     </td>
                                     <td class="px-6 py-4"></td>
@@ -83,24 +81,30 @@
                             @endif
                             @foreach ($typeIncomes as $income)
                                 <tr class="hover:bg-emerald-50/30 transition-colors group">
-                                    <td class="px-6 py-4 text-sm text-slate-700 font-medium">{{ $income->description }}</td>
-                                    <td class="px-6 py-4">
+                                    <td class="px-6 py-4 items-center">
                                         @if($income->category)
-                                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-700">
+                                            <span class="inline-flex px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-700">
                                                 {{ $income->category->name }}
                                             </span>
                                         @else
                                             <span class="text-slate-400 text-xs">—</span>
                                         @endif
                                     </td>
-                                    <td class="px-6 py-4 text-right text-emerald-700 font-semibold text-base">
+                                    <td class="px-6 py-4 text-center text-emerald-700 font-semibold text-base">
                                         {{ $income->date->format('d/m/Y') }}
                                     </td>
-                                    <td class="px-6 py-4 text-right text-emerald-700 font-semibold text-base">
+                                    <td class="px-6 py-4 text-center text-emerald-700 font-semibold text-base">
                                         R$ {{ number_format($income->amount, 2, ',', '.') }}
                                     </td>
                                     <td class="px-6 py-4">
-                                        <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div class="flex items-center justify-end gap-2">
+                                            <a href="{{ route('expenses.show', $income) }}"
+                                               class="p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors" title="Editar">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V6m0 12v-2m9-4a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                </svg>
+                                            </a>
                                             <a href="{{ route('expenses.edit', $income) }}" 
                                                class="p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors" title="Editar">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -164,19 +168,17 @@
                     <table class="w-full">
                         <thead class="bg-slate-50 border-b border-slate-200">
                             <tr>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Descrição</th>
                                 <th class="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Categoria</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Pagamento</th>
-                                <th class="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Data</th>
-                                <th class="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Valor</th>
+                                <th class="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Pagamento</th>
+                                <th class="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Data</th>
+                                <th class="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Valor</th>
                                 <th class="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Parcelas</th>
-                                <th class="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider w-32">Ações</th>
+                                <th class="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider w-32">Ações</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             @foreach ($typeExpenses as $expense)
                                 <tr class="hover:bg-rose-50/30 transition-colors group">
-                                    <td class="px-6 py-4 text-sm text-slate-700 font-medium">{{ $expense->description }}</td>
                                     <td class="px-6 py-4">
                                         @if($expense->category)
                                             <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-700">
@@ -186,16 +188,16 @@
                                             <span class="text-slate-400 text-xs">—</span>
                                         @endif
                                     </td>
-                                    <td class="px-6 py-4">
-                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium 
+                                    <td class="px-6 py-4 items-center text-center">
+                                        <span class="inline-flex px-2.5 py-1 rounded-lg text-xs font-medium
                                             {{ $expense->payment_mode === 'pix' ? 'bg-purple-50 text-purple-700 border border-purple-100' : 'bg-amber-50 text-amber-700 border border-amber-100' }}">
                                             {{ ucfirst($expense->payment_mode) }}
                                         </span>
                                     </td>
-                                    <td class="px-6 py-4 text-right text-emerald-700 font-semibold text-base">
+                                    <td class="px-6 py-4 text-center text-emerald-700 font-semibold text-base">
                                         {{ $expense->date->format('d/m/Y') }}
                                     </td>
-                                    <td class="px-6 py-4 text-right text-rose-700 font-semibold text-base">
+                                    <td class="px-6 py-4 text-center text-rose-700 font-semibold text-base">
                                         R$ {{ number_format($expense->amount, 2, ',', '.') }}
                                     </td>
                                     <td class="px-6 py-4 text-center">
@@ -208,7 +210,14 @@
                                         @endif
                                     </td>
                                     <td class="px-6 py-4">
-                                        <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div class="flex items-center justify-end gap-2">
+                                            <a href="{{ route('expenses.show', $expense) }}"
+                                               class="p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors" title="Visualizar">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V6m0 12v-2m9-4a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                </svg>
+                                            </a>
                                             <a href="{{ route('expenses.edit', $expense) }}" 
                                                class="p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors" title="Editar">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

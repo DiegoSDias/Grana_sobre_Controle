@@ -19,7 +19,6 @@ class MonthlyBalanceService
             ->where('month', $month)
             ->sum('amount');
 
-
         if ($month == 1) {
             $previousMonthNumber = 12;
             $previousYear = $year - 1;
