@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    'pluggy' => [
+        'client_id' => env('PLUGGY_CLIENT_ID'),
+        'client_secret' => env('PLUGGY_CLIENT_SECRET'),
+        'base_url' => env('PLUGGY_BASE_URL', 'https://api.pluggy.ai'),
+        'webhook_url' => env('PLUGGY_WEBHOOK_URL'),
+        'webhook_secret' => env('PLUGGY_WEBHOOK_SECRET'),
+        'api_key_cache_minutes' => env('PLUGGY_API_KEY_CACHE_MINUTES', 105),
+    ],
+
 ];

@@ -62,4 +62,24 @@ class User extends Authenticatable
     public function balances(): HasMany {
         return $this->hasMany(MonthlyBalance::class);
     }
+
+    public function pluggyItems(): HasMany
+    {
+        return $this->hasMany(PluggyItem::class);
+    }
+
+    public function pluggyAccounts(): HasMany
+    {
+        return $this->hasMany(PluggyAccount::class);
+    }
+
+    public function pluggyTransactions(): HasMany
+    {
+        return $this->hasMany(PluggyTransaction::class);
+    }
+
+    public function pluggyTransactionRules(): HasMany
+    {
+        return $this->hasMany(PluggyTransactionRule::class);
+    }
 }
