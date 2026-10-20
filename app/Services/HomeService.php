@@ -9,6 +9,10 @@ use Illuminate\Support\Facades\Auth;
 
 class HomeService
 {
+    public function __construct(private readonly FinancialSummaryService $financialSummary)
+    {
+    }
+
     public function index(int $anoSelecionado)
     {
         $meses = Months::MONTHS;
@@ -23,10 +27,11 @@ class HomeService
             ->year($anoSelecionado)
             ->pluck('closing_balance', 'month');
 
+        $importedIncomeBalance = $this->financialSummary->importedIncomeByMonth(Auth::id(), $anoSelecionado);
         $finalIncomeBalance = [];
 
         foreach (range(1, 12) as $mes) {
-            $receitaMes = $incomeBalance[$mes] ?? 0;
+            $receitaMes = ($incomeBalance[$mes] ?? 0) + $importedIncomeBalance[$mes];
             $saldoAnterior = $closingBalances[$mes - 1] ?? 0;
             $finalIncomeBalance[$mes] = $receitaMes + $saldoAnterior;
         }
@@ -37,10 +42,15 @@ class HomeService
             ->groupedByMonth()
             ->pluck('total', 'month');
 
+        $importedExpenseBalance = $this->financialSummary->importedExpensesByMonth(Auth::id(), $anoSelecionado);
+        foreach (range(1, 12) as $mes) {
+            $expenseBalance[$mes] = ($expenseBalance[$mes] ?? 0) + $importedExpenseBalance[$mes];
+        }
+
         $totalExpense = Expense::FromUser(Auth::id())
             ->expense()
             ->year($anoSelecionado)
-            ->sum('amount');
+            ->sum('amount') + array_sum($importedExpenseBalance);
 
         $mediaAnual = $expenseBalance->count()
             ? $totalExpense / $expenseBalance->count()

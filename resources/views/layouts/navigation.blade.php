@@ -32,6 +32,14 @@
                     <x-nav-link :href="route('category-groups.index')" :active="request()->routeIs('category-groups.*')">
                         {{ __('Grupos') }}
                     </x-nav-link>
+
+                    <x-nav-link :href="route('pluggy.connections')" :active="request()->routeIs('pluggy.connections*')">
+                        {{ __('Conexões') }}
+                    </x-nav-link>
+
+                    <x-nav-link :href="route('pluggy.data-notice')" :active="request()->routeIs('pluggy.data-notice')">
+                        {{ __('Dados importados') }}
+                    </x-nav-link>
                 </div>
             </div>
 
@@ -122,6 +130,20 @@
                         d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                 </svg>
                 Início
+            </a>
+            <a href="{{ route('pluggy.connections') }}"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all {{ request()->routeIs('pluggy.connections*') ? 'bg-blue-100 text-blue-700' : 'text-slate-600 hover:bg-white hover:text-slate-900' }}">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0-1.657 1.79-3 4-3s4 1.343 4 3-1.79 3-4 3-4 1.343-4 3 1.79 3 4 3 4-1.343 4-3M4 7v10a2 2 0 002 2h8M4 7a2 2 0 012-2h8M4 7l8 5 4-2.5" />
+                </svg>
+                Conexões
+            </a>
+            <a href="{{ route('pluggy.data-notice') }}"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all {{ request()->routeIs('pluggy.data-notice') ? 'bg-blue-100 text-blue-700' : 'text-slate-600 hover:bg-white hover:text-slate-900' }}">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 4h.01M5.1 19h13.8c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.37 16c-.77 1.33.19 3 1.73 3z" />
+                </svg>
+                Dados importados
             </a>
         </div>
 

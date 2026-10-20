@@ -89,6 +89,9 @@
                                         @else
                                             <span class="text-slate-400 text-xs">—</span>
                                         @endif
+                                        @if($income instanceof \App\Models\PluggyTransaction)
+                                            <span class="ml-2 inline-flex px-2 py-1 rounded-lg text-xs font-medium bg-blue-50 text-blue-700">Banco</span>
+                                        @endif
                                     </td>
                                     <td class="px-6 py-4 text-center text-emerald-700 font-semibold text-base">
                                         {{ $income->date->format('d/m/Y') }}
@@ -98,6 +101,11 @@
                                     </td>
                                     <td class="px-6 py-4">
                                         <div class="flex items-center justify-end gap-2">
+                                            @if($income instanceof \App\Models\PluggyTransaction)
+                                                <a href="{{ route('pluggy.transactions.show', $income) }}" class="p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors" title="Visualizar">◉</a>
+                                                <a href="{{ route('pluggy.transactions.edit', $income) }}" class="p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors" title="Editar">✎</a>
+                                                <form action="{{ route('pluggy.transactions.destroy', $income) }}" method="POST" onsubmit="return confirm('Remover esta receita importada desta aplicação?')" class="inline">@csrf @method('DELETE')<button class="p-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors" title="Excluir">⌫</button></form>
+                                            @else
                                             <a href="{{ route('expenses.show', $income) }}"
                                                class="p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors" title="Editar">
                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -121,6 +129,7 @@
                                                     </svg>
                                                 </button>
                                             </form>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>
@@ -187,6 +196,9 @@
                                         @else
                                             <span class="text-slate-400 text-xs">—</span>
                                         @endif
+                                        @if($expense instanceof \App\Models\PluggyTransaction)
+                                            <span class="ml-2 inline-flex px-2 py-1 rounded-lg text-xs font-medium bg-blue-50 text-blue-700">Banco</span>
+                                        @endif
                                     </td>
                                     <td class="px-6 py-4 items-center text-center">
                                         <span class="inline-flex px-2.5 py-1 rounded-lg text-xs font-medium
@@ -198,7 +210,7 @@
                                         {{ $expense->date->format('d/m/Y') }}
                                     </td>
                                     <td class="px-6 py-4 text-center text-rose-700 font-semibold text-base">
-                                        R$ {{ number_format($expense->amount, 2, ',', '.') }}
+                                        R$ {{ number_format($expense instanceof \App\Models\PluggyTransaction ? $expense->display_amount : $expense->amount, 2, ',', '.') }}
                                     </td>
                                     <td class="px-6 py-4 text-center">
                                         @if($expense->current_installment)
@@ -211,6 +223,11 @@
                                     </td>
                                     <td class="px-6 py-4">
                                         <div class="flex items-center justify-end gap-2">
+                                            @if($expense instanceof \App\Models\PluggyTransaction)
+                                                <a href="{{ route('pluggy.transactions.show', $expense) }}" class="p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors" title="Visualizar">◉</a>
+                                                <a href="{{ route('pluggy.transactions.edit', $expense) }}" class="p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors" title="Editar">✎</a>
+                                                <form action="{{ route('pluggy.transactions.destroy', $expense) }}" method="POST" onsubmit="return confirm('Remover esta despesa importada desta aplicação?')" class="inline">@csrf @method('DELETE')<button class="p-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors" title="Excluir">⌫</button></form>
+                                            @else
                                             <a href="{{ route('expenses.show', $expense) }}"
                                                class="p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors" title="Visualizar">
                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -234,6 +251,7 @@
                                                     </svg>
                                                 </button>
                                             </form>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>
@@ -251,6 +269,32 @@
                 </div>
             @endif
         </div>
+
+        @if ($excludedTransactions->isNotEmpty())
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden animate-slide-up" style="animation-delay: 0.25s">
+                <div class="p-6 border-b border-slate-100"><h2 class="text-2xl font-light text-slate-900">Movimentações não contabilizadas</h2><p class="mt-1 text-sm text-slate-500">Cada lançamento abaixo informa exatamente por que ainda não entra nos totais.</p></div>
+                <div class="divide-y divide-slate-100">
+                    @foreach ($excludedTransactions as $transaction)
+                        <div class="flex flex-col gap-2 p-5 sm:flex-row sm:items-center sm:justify-between">
+                            @php
+                                $reason = match (true) {
+                                    $transaction->status === 'PENDING' => 'Pendente na instituição: entrará no total quando for confirmada.',
+                                    in_array($transaction->exclusion_reason, ['user_exclusion_phrase', 'user_transfer_phrase']) => 'Bloqueada por uma regra personalizada.',
+                                    $transaction->classification === 'internal_reserve_transfer' => 'Movimentação de saldo reservado/caixinha.',
+                                    $transaction->classification === 'internal_transfer' => 'Transferência entre as suas contas.',
+                                    $transaction->classification === 'credit_card_payment' => 'Pagamento de fatura (evita contar a mesma compra duas vezes).',
+                                    $transaction->classification === 'ignored' => 'Excluída por uma regra personalizada.',
+                                    $transaction->classification === 'unknown' => 'Sem tipo informado pela instituição; revise este lançamento.',
+                                    default => 'Não contabilizada por classificação pendente de revisão.',
+                                };
+                            @endphp
+                            <div><p class="font-medium text-slate-800">{{ $transaction->description }}</p><p class="text-sm text-slate-500">{{ $transaction->transaction_date->format('d/m/Y') }} · {{ $reason }}</p></div>
+                            <span class="font-semibold text-slate-700">R$ {{ number_format($transaction->amount, 2, ',', '.') }}</span>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
 
         {{-- RESUMO --}}
         <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden animate-slide-up" style="animation-delay: 0.3s">

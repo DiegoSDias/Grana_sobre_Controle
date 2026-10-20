@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Auth;
 
 class MonthlyBalanceService
 {
+    public function __construct(private readonly FinancialSummaryService $financialSummary)
+    {
+    }
     /**
      * Create a new class instance.
      */
@@ -34,21 +37,22 @@ class MonthlyBalanceService
 
         $balanceMonthPrevious = $previousBalance?->closing_balance ?? 0;
         
-        $incomes += $balanceMonthPrevious;
+        $imported = $this->financialSummary->importedMonthTotals(Auth::id(), $year, $month);
+        $incomes += $imported['income'] + $balanceMonthPrevious;
 
         $expensesNormal = Expense::where('user_id', Auth::id())
             ->where('type', 'expense')
             ->where('year', $year)
             ->where('month', $month)
             ->where('payment_mode', '!=', 'pix')
-            ->sum('amount');
+            ->sum('amount') + $imported['expenses'];
 
         $expensesPix = Expense::where('user_id', Auth::id())
             ->where('type', 'expense')
             ->where('year', $year)
             ->where('month', $month)
             ->where('payment_mode', 'pix')
-            ->sum('amount');
+            ->sum('amount') + $imported['pix_expenses'];
 
         $balanceMonth = $incomes - $expensesNormal;
 

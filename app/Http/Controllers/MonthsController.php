@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Expense;
+use App\Models\PluggyTransaction;
 use App\Services\MonthlyBalanceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -11,7 +12,6 @@ use Illuminate\Support\Facades\Auth;
 class MonthsController extends Controller
 {
     protected MonthlyBalanceService $monthlyBalanceService;
-    
     public function __construct(MonthlyBalanceService $monthlyBalanceService) {
         $this->monthlyBalanceService = $monthlyBalanceService;
     }
@@ -31,7 +31,7 @@ class MonthsController extends Controller
                                 ->where('type', 'expense')
                                 ->get();
 
-        $typeIncomes = Expense::with('category')
+        $manualIncomes = Expense::with('category')
                                 ->where('user_id', Auth::id())
                                 ->where('type', 'income')
                                 ->where('month', $month)
@@ -47,7 +47,7 @@ class MonthsController extends Controller
                                 })
                                 ->get();
 
-        $typeExpenses = Expense::with('category')
+        $manualExpenses = Expense::with('category')
                                 ->where('user_id', Auth::id())
                                 ->where('type', 'expense')
                                 ->where('month', $month)
@@ -69,6 +69,43 @@ class MonthsController extends Controller
                                 })
                                 ->orderBy('date')
                                 ->get();
+
+        $importedBase = PluggyTransaction::with('category')
+            ->where('user_id', Auth::id())
+            ->forMonth((int) $year, (int) $month)
+            ->whereNull('removed_at')
+            ->whereNull('deleted_by_user_at');
+
+        $importedIncomes = (clone $importedBase)
+            ->contributesToTotals()
+            ->economicIncome()
+            ->when($request->income_category, fn ($q) => $q->where('category_id', $request->income_category))
+            ->when($request->income_value, fn ($q) => $q->where('amount', $request->income_value_op, $request->income_value))
+            ->when($request->date_value, fn ($q) => $q->whereDate('transaction_date', $request->date_value))
+            ->get();
+
+        $importedExpenses = (clone $importedBase)
+            ->contributesToTotals()
+            ->whereIn('classification', [
+                PluggyTransaction::CLASSIFICATION_EXPENSE,
+                PluggyTransaction::CLASSIFICATION_FEE,
+                PluggyTransaction::CLASSIFICATION_REFUND,
+                PluggyTransaction::CLASSIFICATION_CASHBACK,
+            ])
+            ->when($request->expense_category, fn ($q) => $q->where('category_id', $request->expense_category))
+            ->when($request->payment_mode, fn ($q) => $q->where('payment_method', $request->payment_mode === 'cartao' ? 'card' : $request->payment_mode))
+            ->when($request->is_installment !== null, fn ($q) => $q->where('is_installment', $request->is_installment))
+            ->when($request->expense_value, fn ($q) => $q->where('amount', $request->expense_value_op, $request->expense_value))
+            ->when($request->date_value, fn ($q) => $q->whereDate('transaction_date', $request->date_value))
+            ->get();
+
+        $excludedTransactions = (clone $importedBase)
+            ->where('affects_totals', false)
+            ->orderByDesc('transaction_date')
+            ->get();
+
+        $typeIncomes = $manualIncomes->concat($importedIncomes)->sortBy('date')->values();
+        $typeExpenses = $manualExpenses->concat($importedExpenses)->sortBy('date')->values();
         
         $values = $this->monthlyBalanceService->calculate($year, $month);
 
@@ -80,11 +117,13 @@ class MonthsController extends Controller
         $balanceMonthPrevious = $values['balanceMonthPrevious'];
 
         $filteredIncomesTotal = $typeIncomes->sum('amount') + $balanceMonthPrevious;
-        $filteredExpensesTotal = $typeExpenses->sum('amount');
+        $filteredExpensesTotal = $typeExpenses->sum(fn ($expense) => $expense instanceof PluggyTransaction ? $expense->display_amount : $expense->amount);
+        $hasMovements = $expenses->isNotEmpty() || $typeIncomes->isNotEmpty() || $typeExpenses->isNotEmpty() || $excludedTransactions->isNotEmpty();
         
 
         return view('months.show', compact(
                                             'expenses',
+                                            'hasMovements',
                                             'categoriesIncome',
                                             'categoriesExpense',
                                             'filteredIncomesTotal',
@@ -93,6 +132,7 @@ class MonthsController extends Controller
                                             'month', 
                                             'typeIncomes', 
                                             'typeExpenses',
+                                            'excludedTransactions',
                                             'incomesBalance', 
                                             'expensesBalance',
                                             'expensesPix',
