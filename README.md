@@ -1,59 +1,82 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Grana sob Controle
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Aplicação Laravel para controle de receitas e despesas manuais, com integração opcional de Open Finance pela Pluggy. As informações bancárias são buscadas pela Pluggy e persistidas no banco local antes de serem exibidas nos relatórios.
 
-## About Laravel
+## O que a integração faz
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- Abre o Pluggy Connect sem expor `PLUGGY_CLIENT_SECRET` ao navegador.
+- Associa cada Item Pluggy ao usuário autenticado da aplicação.
+- Sincroniza contas, cartões e transações de forma assíncrona.
+- Mantém cópias locais idempotentes: sincronizar novamente atualiza, não duplica.
+- Soma apenas receitas e despesas economicamente válidas; ignora pendências, transferências internas e pagamento de fatura já representada pelas compras do cartão.
+- Registra estornos e cashback como reversão de despesa.
+- Processa webhooks rapidamente, com deduplicação por `eventId` e processamento em fila.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Configuração
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Copie o ambiente e preencha somente no servidor:
 
-## Learning Laravel
+```env
+PLUGGY_CLIENT_ID=
+PLUGGY_CLIENT_SECRET=
+PLUGGY_BASE_URL=https://api.pluggy.ai
+PLUGGY_WEBHOOK_SECRET=gere-um-segredo-longo
+PLUGGY_WEBHOOK_URL=https://seu-dominio.com/webhooks/pluggy?token=gere-um-segredo-longo
+PLUGGY_API_KEY_CACHE_MINUTES=105
+```
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+Nunca coloque credenciais da Pluggy em JavaScript, repositório ou logs. A chave de API temporária é obtida no backend e fica em cache pelo tempo configurado.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Execute as migrations e mantenha um worker ativo para os jobs de sincronização e webhooks:
 
-## Laravel Sponsors
+```bash
+php artisan migrate
+php artisan queue:work --tries=3
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+Em desenvolvimento, `composer run dev` já inicia o worker. Para receber webhooks localmente, exponha uma URL HTTPS pública (por exemplo, com um túnel) e atualize `PLUGGY_WEBHOOK_URL`.
 
-### Premium Partners
+## Fluxo de uso
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+1. Entre no painel e escolha **Conectar banco**.
+2. Conclua o fluxo do Pluggy Connect.
+3. O navegador envia somente o `itemId` à rota autenticada `POST /pluggy/items`.
+4. A aplicação valida a posse do Item, associa-o ao usuário atual e coloca a sincronização na fila.
+5. Acesse **Conexões** para acompanhar contas locais, última sincronização, solicitar atualização ou remover a conexão.
 
-## Contributing
+Para um Item criado no MeuPluggy, use o campo **Vincular conexão existente** no painel. Esse caminho é destinado ao Item da própria pessoa; um Item já associado a outro usuário local é recusado.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Webhook
 
-## Code of Conduct
+Configure na Pluggy a mesma URL de `PLUGGY_WEBHOOK_URL`. A rota pública é `POST /webhooks/pluggy` e:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+- aceita apenas JSON;
+- valida o segredo opcional via `?token=`;
+- salva e deduplica o evento pelo `eventId`;
+- retorna `2xx` sem esperar a sincronização;
+- envia a atualização de Item ou transações para a fila.
 
-## Security Vulnerabilities
+Para conferir problemas, use `php artisan pail` ou os logs da aplicação. O sistema registra IDs técnicos e status, não credenciais ou dados bancários sensíveis.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Modelo local
 
-## License
+- `pluggy_items`: conexão por usuário e estado de sincronização;
+- `pluggy_accounts`: contas/cartões e saldos persistidos localmente;
+- `pluggy_transactions`: transações normalizadas, classificação, categoria e payload técnico;
+- `pluggy_webhook_events`: eventos recebidos, deduplicação e status de processamento.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Números de documentos e contas usados para detectar transferências internas ficam apenas como HMAC; a interface mostra, no máximo, os quatro últimos dígitos. Remover uma conexão a desativa junto com seus lançamentos importados, preservando todos os lançamentos manuais.
+
+## Testes
+
+```bash
+php artisan test
+```
+
+Os testes cobrem classificação de entradas, despesas, estornos e pagamento de fatura, idempotência de importação, transferência interna por referência PIX e deduplicação de webhook. O ambiente de teste usa SQLite; habilite a extensão `pdo_sqlite` no PHP de linha de comando caso ela ainda não esteja disponível.
+
+## Referências Pluggy
+
+- [Autenticação e Connect Token](https://docs.pluggy.ai/pt/docs/authentication)
+- [Transações paginadas](https://v2.docs.pluggy.ai/en/reference/transactions-list-by-cursor)
+- [Webhooks](https://docs.pluggy.ai/pt/reference/webhooks)
