@@ -31,13 +31,14 @@ class PluggyWebhookTest extends TestCase
             'clientUserId' => (string) $user->id,
         ]);
 
-        $response->assertNoContent();
+        $response->assertNoContent(200);
 
         $this->assertDatabaseHas('pluggy_items', [
             'user_id' => $user->id,
             'pluggy_item_id' => 'b34715d1-a440-4360-bc75-916fe6d9ee00',
             'last_event' => 'item/created',
         ]);
+        $this->assertDatabaseHas('pluggy_webhook_events', ['event_id' => 'a34715d1-a440-4360-bc75-916fe6d9ee00']);
         Queue::assertPushed(ProcessPluggyWebhook::class);
     }
 
@@ -60,7 +61,7 @@ class PluggyWebhookTest extends TestCase
             'eventId' => 'c34715d1-a440-4360-bc75-916fe6d9ee00',
             'itemId' => $item->pluggy_item_id,
             'clientUserId' => (string) $item->user_id,
-        ])->assertNoContent();
+        ])->assertNoContent(200);
 
         $this->assertSoftDeleted('pluggy_items', ['id' => $item->id]);
     }
@@ -76,10 +77,24 @@ class PluggyWebhookTest extends TestCase
             'clientUserId' => (string) $user->id,
         ];
 
-        $this->postJson(route('pluggy.webhook', ['token' => 'webhook-secret']), $payload)->assertNoContent();
-        $this->postJson(route('pluggy.webhook', ['token' => 'webhook-secret']), $payload)->assertNoContent();
+        $this->postJson(route('pluggy.webhook', ['token' => 'webhook-secret']), $payload)->assertNoContent(200);
+        $this->postJson(route('pluggy.webhook', ['token' => 'webhook-secret']), $payload)->assertNoContent(200);
 
         $this->assertDatabaseCount('pluggy_webhook_events', 1);
         Queue::assertPushed(ProcessPluggyWebhook::class, 1);
+    }
+
+    public function test_it_rejects_invalid_requests_without_saving_or_dispatching_events(): void
+    {
+        Queue::fake();
+
+        $this->post(route('pluggy.webhook', ['token' => 'webhook-secret']), [])->assertStatus(415);
+        $this->postJson(route('pluggy.webhook', ['token' => 'wrong']), [])->assertUnauthorized();
+        $this->postJson(route('pluggy.webhook', ['token' => 'webhook-secret']), [
+            'event' => 'item/created', 'eventId' => 'invalid',
+        ])->assertBadRequest();
+
+        $this->assertDatabaseCount('pluggy_webhook_events', 0);
+        Queue::assertNothingPushed();
     }
 }
