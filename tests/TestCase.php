@@ -4,6 +4,7 @@ namespace Tests;
 
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use RuntimeException;
 
 abstract class TestCase extends BaseTestCase
@@ -18,6 +19,7 @@ abstract class TestCase extends BaseTestCase
             'sqlite' => $app['config']->get('database.connections.sqlite'),
         ]);
         Http::preventStrayRequests();
+        Mail::fake();
 
         return $app;
     }
