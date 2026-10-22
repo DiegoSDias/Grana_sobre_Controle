@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\PluggyTransaction;
+use App\Support\Money;
 
 class FinancialSummaryService
 {
@@ -10,19 +11,23 @@ class FinancialSummaryService
     public function importedMonthTotals(int $userId, int $year, int $month): array
     {
         $base = PluggyTransaction::query()->where('user_id', $userId)->forMonth($year, $month)->contributesToTotals();
-        $income = (float) (clone $base)->economicIncome()->sum('amount');
-        $normalExpenses = (float) (clone $base)->economicExpenses()->where('payment_method', '!=', 'pix')->sum('amount');
-        $normalReversals = (float) (clone $base)->reversals()->where('payment_method', '!=', 'pix')->sum('amount');
-        $pixExpenses = (float) (clone $base)->economicExpenses()->where('payment_method', 'pix')->sum('amount');
-        $pixReversals = (float) (clone $base)->reversals()->where('payment_method', 'pix')->sum('amount');
-
-        return ['income' => $income, 'expenses' => $normalExpenses - $normalReversals, 'pix_expenses' => $pixExpenses - $pixReversals];
+        $totals = ['income' => 0, 'expenses' => 0, 'pix_expenses' => 0];
+        foreach ($base->get(['amount', 'classification', 'payment_method']) as $item) {
+            $cents = Money::cents($item->amount);
+            if ($item->classification === PluggyTransaction::CLASSIFICATION_INCOME) {
+                $totals['income'] += $cents;
+            } elseif (in_array($item->classification, [PluggyTransaction::CLASSIFICATION_EXPENSE, PluggyTransaction::CLASSIFICATION_FEE, PluggyTransaction::CLASSIFICATION_REFUND, PluggyTransaction::CLASSIFICATION_CASHBACK], true)) {
+                $reversal = in_array($item->classification, [PluggyTransaction::CLASSIFICATION_REFUND, PluggyTransaction::CLASSIFICATION_CASHBACK], true);
+                $totals[$item->payment_method === 'pix' ? 'pix_expenses' : 'expenses'] += $reversal ? -$cents : $cents;
+            }
+        }
+        return array_map(fn ($cents) => (float) Money::decimal($cents), $totals);
     }
 
     /** @return array<int, float> */
     public function importedExpensesByMonth(int $userId, int $year): array
     {
-        $totals = array_fill(1, 12, 0.0);
+        $totals = array_fill(1, 12, 0);
         $transactions = PluggyTransaction::query()
             ->where('user_id', $userId)
             ->whereYear('transaction_date', $year)
@@ -37,16 +42,16 @@ class FinancialSummaryService
 
         foreach ($transactions as $transaction) {
             $multiplier = in_array($transaction->classification, [PluggyTransaction::CLASSIFICATION_REFUND, PluggyTransaction::CLASSIFICATION_CASHBACK], true) ? -1 : 1;
-            $totals[$transaction->transaction_date->month] += $multiplier * (float) $transaction->amount;
+            $totals[$transaction->transaction_date->month] += $multiplier * Money::cents($transaction->amount);
         }
 
-        return $totals;
+        return array_map(fn ($cents) => (float) Money::decimal($cents), $totals);
     }
 
     /** @return array<int, float> */
     public function importedIncomeByMonth(int $userId, int $year): array
     {
-        $totals = array_fill(1, 12, 0.0);
+        $totals = array_fill(1, 12, 0);
         $transactions = PluggyTransaction::query()
             ->where('user_id', $userId)
             ->whereYear('transaction_date', $year)
@@ -55,9 +60,9 @@ class FinancialSummaryService
             ->get(['transaction_date', 'amount']);
 
         foreach ($transactions as $transaction) {
-            $totals[$transaction->transaction_date->month] += (float) $transaction->amount;
+            $totals[$transaction->transaction_date->month] += Money::cents($transaction->amount);
         }
 
-        return $totals;
+        return array_map(fn ($cents) => (float) Money::decimal($cents), $totals);
     }
 }

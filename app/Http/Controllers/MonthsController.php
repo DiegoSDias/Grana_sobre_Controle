@@ -8,6 +8,7 @@ use App\Models\PluggyTransaction;
 use App\Services\MonthlyBalanceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Support\Money;
 
 class MonthsController extends Controller
 {
@@ -116,8 +117,8 @@ class MonthsController extends Controller
         $balance = $values['balance'];
         $balanceMonthPrevious = $values['balanceMonthPrevious'];
 
-        $filteredIncomesTotal = $typeIncomes->sum('amount') + $balanceMonthPrevious;
-        $filteredExpensesTotal = $typeExpenses->sum(fn ($expense) => $expense instanceof PluggyTransaction ? $expense->display_amount : $expense->amount);
+        $filteredIncomesTotal = (float) Money::decimal($typeIncomes->sum(fn ($item) => Money::cents($item->amount)) + Money::cents($balanceMonthPrevious));
+        $filteredExpensesTotal = (float) Money::decimal($typeExpenses->sum(fn ($expense) => Money::cents($expense instanceof PluggyTransaction ? $expense->display_amount : $expense->amount)));
         $hasMovements = $expenses->isNotEmpty() || $typeIncomes->isNotEmpty() || $typeExpenses->isNotEmpty() || $excludedTransactions->isNotEmpty();
         
 

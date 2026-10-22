@@ -33,6 +33,15 @@
                     @csrf
                     @method('PUT')
 
+                    @if ($expense->installments_group)
+                        <label for="installmentScope" class="block text-sm font-semibold text-slate-700 mb-2">Aplicar alterações a</label>
+                        <select id="installmentScope" name="installment_scope" class="w-full rounded-xl border-slate-200 mb-4">
+                            <option value="single" @selected(old('installment_scope', 'single') === 'single')>Somente esta parcela</option>
+                            <option value="group" @selected(old('installment_scope') === 'group')>Todo o grupo de parcelas</option>
+                        </select>
+                        <p class="text-sm text-slate-600 mb-4">Para o grupo, informe o valor total e a data da primeira parcela. As parcelas serão recriadas.</p>
+                    @endif
+
                     @include('expenses._form', [
                         'expense' => $expense,
                         'type' => $expense->type
@@ -98,10 +107,21 @@
     </style>
 
     <script>
+        @if ($expense->installments_group)
+        const scopeSelect = document.getElementById('installmentScope');
+        const amountInput = document.querySelector('input[name="amount"]');
+        const dateInput = document.querySelector('input[name="date"]');
+        const scopeDefaults = {
+            single: {amount: @json($expense->amount), date: @json($expense->date->format('Y-m-d'))},
+            group: {amount: @json($groupTotal), date: @json($groupDate)}
+        };
+        scopeSelect.addEventListener('change', function () {
+            amountInput.value = scopeDefaults[this.value].amount;
+            dateInput.value = scopeDefaults[this.value].date;
+        });
+        @endif
         const categorySelect = document.getElementById('categorySelect')
         const newCategoryField = document.getElementById('newCategoryField')
-        const installmentRadios = document.querySelectorAll('input[name="is_installment"]')
-        const installmentsField = document.getElementById('installmentsField')
 
         categorySelect.addEventListener('change', function() {
             if (this.value === 'new') {
@@ -111,14 +131,5 @@
             }
         })
 
-        installmentRadios.forEach(radio => {
-            radio.addEventListener('change', function() {
-                if (this.value === '1') {
-                    installmentsField.classList.remove('hidden')
-                } else {
-                    installmentsField.classList.add('hidden')
-                }
-            })
-        })
     </script>
 </x-app-layout>

@@ -9,6 +9,8 @@ use App\Services\ExpenseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Str;
+use App\Support\Money;
+use Carbon\Carbon;
 
 class ExpensesController extends Controller
 {
@@ -50,8 +52,9 @@ class ExpensesController extends Controller
     {
         $data = $request->validated();
 
-        $data['year'] = $request->year;
-        $data['month'] = $request->month;
+        $date = Carbon::parse($data['date']);
+        $data['year'] = $date->year;
+        $data['month'] = $date->month;
 
         $this->expenseService->create($data);
         
@@ -82,11 +85,15 @@ class ExpensesController extends Controller
         $year = $expense->year;
         $month = $expense->month;
         $categories = Category::where('user_id', Auth::id())->where('type', $type)->get();
-        if($expense->is_installment) {
-            $expense->amount = round($expense->total_installments * $expense->amount);
+        $groupTotal = null;
+        $groupDate = null;
+        if ($expense->installments_group) {
+            $installments = Expense::where('user_id', Auth::id())->where('installments_group', $expense->installments_group)->orderBy('current_installment')->get();
+            $groupTotal = Money::decimal($installments->sum(fn ($item) => Money::cents($item->amount)));
+            $groupDate = $installments->first()?->date->format('Y-m-d');
         }
 
-        return view('expenses.edit', compact('expense', 'type', 'year', 'month', 'categories'));
+        return view('expenses.edit', compact('expense', 'type', 'year', 'month', 'categories', 'groupTotal', 'groupDate'));
     }
 
     /**
@@ -96,15 +103,16 @@ class ExpensesController extends Controller
     {
         $data = $request->validated();
 
-        $data['year'] = $request->year;
-        $data['month'] = $request->month;
+        $date = Carbon::parse($data['date']);
+        $data['year'] = $date->year;
+        $data['month'] = $date->month;
 
         if(!empty($data['is_installment'])) {
             $expense = Expense::where('user_id', Auth::id())->findOrFail($id);
             $data['current_installment'] = $expense->current_installment;
-            if($expense->installments_group) {
+            if($expense->installments_group && ($data['installment_scope'] ?? 'group') === 'group') {
                 $expense = Expense::where('user_id', Auth::id())->where('installments_group', $expense->installments_group)
-                                    ->firstOrFail();
+                                    ->orderBy('current_installment')->firstOrFail();
             }
         } else {
              $expense = Expense::where('user_id', Auth::id())->findOrFail($id);
@@ -120,13 +128,23 @@ class ExpensesController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Expense $expense)
+    public function confirmDelete(Expense $expense)
     {
         abort_unless($expense->user_id === Auth::id(), 404);
-        $this->expenseService->destroy($expense);
+
+        return view('expenses.confirm-delete', compact('expense'));
+    }
+
+    public function destroy(Request $request, Expense $expense)
+    {
+        abort_unless($expense->user_id === Auth::id(), 404);
+        $scope = $request->validate(['installment_scope' => 'nullable|in:single,group']);
+        $year = $expense->year;
+        $month = $expense->month;
+        $this->expenseService->destroy($expense, $scope['installment_scope'] ?? 'single');
 
         return redirect()
-            ->back()
+            ->route('month.show', [$year, $month])
             ->with('success', 'Despesa excluída com sucesso');
     }
 }

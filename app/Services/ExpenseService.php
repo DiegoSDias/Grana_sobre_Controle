@@ -8,9 +8,13 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use App\Support\Money;
+use Illuminate\Validation\ValidationException;
 
 class ExpenseService
 {
+    public function __construct(private readonly MonthlyBalanceService $balances) {}
+
     public function create(array $data): void
     {
         DB::transaction(function () use ($data) {
@@ -23,6 +27,9 @@ class ExpenseService
             } else {
                 $this->createSingleExpense($data);
             }
+
+            $date = Carbon::parse($data['date']);
+            $this->balances->recalculateClosedFrom(Auth::id(), $date->year, $date->month);
 
         });
 
@@ -67,25 +74,29 @@ class ExpenseService
 
     private function createInstallments(array $data) {
         $installmentsGroup = Str::uuid();
-        $totalInstallments = $data['total_installments'];
-        $amount = $data['amount'];
-        $valueInstallment = $amount / $totalInstallments;
-        $baseDate = Carbon::createFromDate($data['year'], $data['month'], 1);
+        $totalInstallments = (int) $data['total_installments'];
+        $cents = Money::cents($data['amount']);
+        if ($cents < $totalInstallments) {
+            throw ValidationException::withMessages(['amount' => 'O valor deve permitir pelo menos um centavo por parcela.']);
+        }
+        $base = intdiv($cents, $totalInstallments);
+        $remainder = $cents % $totalInstallments;
+        $baseDate = Carbon::parse($data['date'])->startOfDay();
         
         
         for($i = 1; $i <= $totalInstallments; $i++) {
-            $date = $baseDate->copy()->addMonths($i - 1);
+            $date = $baseDate->copy()->addMonthsNoOverflow($i - 1);
 
             Expense::create([
                 'user_id' => Auth::id(),
                 'category_id' => $data['category_id'],
-                'date' => $data['date'],
+                'date' => $date->toDateString(),
                 'month' => $date->month,
                 'year' => $date->year,
-                'payment_mode' => $data['payment_mode'],
+                'payment_mode' => $data['payment_mode'] ?? null,
                 'type' => $data['type'],
                 'description' => $data['description'] ?? null,
-                'amount' => $valueInstallment,
+                'amount' => Money::decimal($base + ($i <= $remainder ? 1 : 0)),
                 'is_installment' => true,
                 'current_installment' => $i,
                 'total_installments' => $data['total_installments'],
@@ -99,90 +110,69 @@ class ExpenseService
     {
         DB::transaction(function () use ($expense, $data) {
 
+            $first = $expense->installments_group && ($data['installment_scope'] ?? 'group') === 'group'
+                ? Expense::where('user_id', Auth::id())->where('installments_group', $expense->installments_group)->orderBy('year')->orderBy('month')->first()
+                : $expense;
+            $oldMonth = Carbon::create($first->year, $first->month, 1);
+            $newMonth = Carbon::parse($data['date'])->startOfMonth();
+            $from = $oldMonth->lessThan($newMonth) ? $oldMonth : $newMonth;
             $data['category_id'] = $this->resolveCategory($data);
 
-            $wasInstallment = !empty($expense->installments_group);
-            $willBeInstallment = !empty($data['is_installment']);
-
-
-            if (!$wasInstallment && $willBeInstallment) {
-
-                $baseDate = Carbon::createFromDate(
-                    $expense->year,
-                    $expense->month,
-                    1
-                );
- 
-                $expense->delete();
-
-                $data['month'] = $baseDate->month;
-                $data['year']  = $baseDate->year;
-
-                $this->createInstallments($data);
-
-                return;
+            if ($expense->installments_group && ($data['installment_scope'] ?? 'group') === 'single') {
+                $date = Carbon::parse($data['date']);
+                $expense->update([
+                    'category_id' => $data['category_id'], 'payment_mode' => $data['payment_mode'] ?? null,
+                    'type' => $data['type'], 'date' => $date->toDateString(), 'month' => $date->month,
+                    'year' => $date->year, 'description' => $data['description'] ?? null, 'amount' => $data['amount'],
+                ]);
+            } elseif ($expense->installments_group || !empty($data['is_installment'])) {
+                if ($expense->installments_group) {
+                    Expense::where('user_id', Auth::id())->where('installments_group', $expense->installments_group)->delete();
+                } else {
+                    $expense->delete();
+                }
+                $data['month'] = $newMonth->month;
+                $data['year'] = $newMonth->year;
+                if (!empty($data['is_installment'])) {
+                    $this->createInstallments($data);
+                } else {
+                    $this->createSingleExpense($data);
+                }
+            } else {
+                $this->updateSingleExpense($expense, $data);
             }
-
-            if ($wasInstallment && !$willBeInstallment) {
-
-                $baseDate = Carbon::createFromDate(
-                    $expense->year,
-                    $expense->month,
-                    1
-                    )->subMonths($expense->current_installment - 1);
-                    
-                Expense::where('user_id', Auth::id())->where('installments_group', $expense->installments_group)->delete();
-                    
-                $data['month'] = $baseDate->month;
-                $data['year']  = $baseDate->year;
-    
-                $this->createSingleExpense($data);
-
-                return;
-            }
-
-            if ($wasInstallment && $willBeInstallment) {
-
-                $baseDate = Carbon::createFromDate(
-                    $expense->year,
-                    $expense->month,
-                    1
-                )->subMonths($expense->current_installment - 1);
-
-                Expense::where('user_id', Auth::id())->where('installments_group', $expense->installments_group)->delete();
-
-                $data['month'] = $baseDate->month;
-                $data['year']  = $baseDate->year;
-
-                $this->createInstallments($data);
-
-                return;
-            }
-
-            $this->updateSingleExpense($expense, $data);
+            $this->balances->recalculateClosedFrom(Auth::id(), $from->year, $from->month);
         });
     }
 
     private function updateSingleExpense(Expense $expense, array $data) {
 
+        $date = Carbon::parse($data['date']);
+
         $expense->update([
                 'category_id' => $data['category_id'],
                 'payment_mode' => $data['payment_mode'] ?? null,
                 'type' => $data['type'],
-                'date' => $data['date'],
+                'date' => $date->toDateString(),
+                'year' => $date->year,
+                'month' => $date->month,
                 'description' => $data['description'] ?? null,
                 'amount' => $data['amount'],
             ]);
 
     }
 
-    public function destroy(Expense $expense) {
-        DB::transaction(function() use($expense) {
-            if(!empty($expense->is_installment)) {
+    public function destroy(Expense $expense, string $scope = 'group') {
+        DB::transaction(function() use($expense, $scope) {
+            $first = !empty($expense->installments_group) && $scope === 'group'
+                ? Expense::where('user_id', Auth::id())->where('installments_group', $expense->installments_group)->orderBy('year')->orderBy('month')->first()
+                : $expense;
+            if(!empty($expense->installments_group) && $scope === 'group') {
                 Expense::where('user_id', Auth::id())->where('installments_group', $expense->installments_group)->delete();
             } else {
                 $expense->delete();
             }
+            $this->balances->recalculateClosedFrom(Auth::id(), $first->year, $first->month);
         });
     }
 }

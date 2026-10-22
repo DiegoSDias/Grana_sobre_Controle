@@ -27,6 +27,7 @@ class Expense extends Model
 
     protected $casts = [
         'date' => 'date',
+        'amount' => 'decimal:2',
     ];
 
     public function user(): BelongsTo {

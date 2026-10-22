@@ -29,7 +29,7 @@ class ExpensesRequest extends FormRequest
         return [
             'description' => 'nullable|string|max:255',
             'date' => 'required|date',
-            'amount' => 'required|numeric|min:0.01',
+            'amount' => ['required', 'numeric', 'min:0.01', 'max:99999999.99', 'regex:/^\d+(\.\d{1,2})?$/'],
             'category_id' => ['required', function ($attribute, $value, $fail) {
                 if ($value !== 'new' && (! is_scalar($value) || ! ctype_digit((string) $value) || ! \App\Models\Category::where('user_id', $this->user()->id)->where('type', $this->input('type'))->whereKey($value)->exists())) {
                     $fail('Escolha uma categoria válida para o tipo da movimentação.');
@@ -39,7 +39,15 @@ class ExpensesRequest extends FormRequest
             'payment_mode' => 'nullable|required_if:type,expense|in:pix,cartao',
             'type' => 'required|in:income,expense',
             'is_installment' => 'boolean',
-            'total_installments' => 'nullable|required_if:is_installment,true|integer|min:2'
+            'total_installments' => [
+                \Illuminate\Validation\Rule::requiredIf(fn () => $this->boolean('is_installment') && ! (
+                    $this->input('installment_scope') === 'single'
+                    && $this->route('expense') !== null
+                    && Expense::where('user_id', $this->user()->id)->whereKey($this->route('expense'))->whereNotNull('installments_group')->exists()
+                )),
+                'nullable', 'integer', 'min:2', 'max:255',
+            ],
+            'installment_scope' => 'nullable|in:single,group',
         ];
     }
 }

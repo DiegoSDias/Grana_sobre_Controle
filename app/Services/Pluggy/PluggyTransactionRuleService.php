@@ -6,6 +6,7 @@ use App\Models\PluggyTransaction;
 use App\Models\PluggyTransactionRule;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use App\Services\MonthlyBalanceService;
 
 class PluggyTransactionRuleService
 {
@@ -85,6 +86,7 @@ class PluggyTransactionRuleService
             });
 
         $this->transferMatcher->matchForUser($userId);
+        app(MonthlyBalanceService::class)->recalculateClosedFrom($userId, 0, 1);
     }
 
     private function matchingRule(int $userId, string $description, ?string $descriptionRaw): ?PluggyTransactionRule

@@ -119,6 +119,9 @@
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                                 </svg>
                                             </a>
+                                            @if ($income->installments_group)
+                                            <a href="{{ route('expenses.confirm-delete', $income) }}" class="p-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors" title="Excluir" aria-label="Excluir receita">⌫</a>
+                                            @else
                                             <form action="{{ route('expenses.destroy', $income) }}" method="POST"
                                                 onsubmit="return confirm('Tem certeza que deseja excluir esta receita?')" class="inline">
                                                 @csrf
@@ -129,6 +132,7 @@
                                                     </svg>
                                                 </button>
                                             </form>
+                                            @endif
                                             @endif
                                         </div>
                                     </td>
@@ -241,6 +245,9 @@
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                                 </svg>
                                             </a>
+                                            @if ($expense->installments_group)
+                                            <a href="{{ route('expenses.confirm-delete', $expense) }}" class="p-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors" title="Excluir" aria-label="Excluir despesa">⌫</a>
+                                            @else
                                             <form action="{{ route('expenses.destroy', $expense) }}" method="POST"
                                                 onsubmit="return confirm('Tem certeza que deseja excluir esta despesa?')" class="inline">
                                                 @csrf
@@ -251,6 +258,7 @@
                                                     </svg>
                                                 </button>
                                             </form>
+                                            @endif
                                             @endif
                                         </div>
                                     </td>

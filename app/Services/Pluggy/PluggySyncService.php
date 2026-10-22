@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Log;
 use Throwable;
+use App\Services\MonthlyBalanceService;
 
 class PluggySyncService
 {
@@ -61,6 +62,7 @@ class PluggySyncService
                 ->update(['is_active' => false]);
 
             $transfers = $this->transferMatcher->matchForUser($connection->user_id);
+            app(MonthlyBalanceService::class)->recalculateClosedFrom($connection->user_id, 0, 1);
             $connection->update(['last_synced_at' => now(), 'last_sync_status' => 'success', 'last_error' => null]);
 
             Log::info('Sincronização Pluggy concluída.', [
@@ -83,10 +85,16 @@ class PluggySyncService
 
     public function markTransactionsDeleted(string $pluggyItemId, array $transactionIds): int
     {
-        return PluggyTransaction::query()
+        $connection = PluggyItem::query()->where('pluggy_item_id', $pluggyItemId)->first();
+        if (! $connection) {
+            return 0;
+        }
+        $updated = PluggyTransaction::query()
             ->whereHas('connection', fn ($query) => $query->where('pluggy_item_id', $pluggyItemId)->whereColumn('pluggy_items.user_id', 'pluggy_transactions.user_id'))
             ->whereIn('pluggy_transaction_id', $transactionIds)
             ->update(['removed_at' => now(), 'affects_totals' => false]);
+        app(MonthlyBalanceService::class)->recalculateClosedFrom($connection->user_id, 0, 1);
+        return $updated;
     }
 
     /** @param array<string, mixed> $item */

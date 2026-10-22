@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Log;
 use Throwable;
+use App\Services\MonthlyBalanceService;
 
 class PluggyAccountController extends Controller
 {
@@ -139,6 +140,8 @@ class PluggyAccountController extends Controller
             ->where('user_id', $request->user()->id)
             ->where('pluggy_connection_id', $item->id)
             ->update(['affects_totals' => false, 'removed_at' => now()]);
+
+        app(MonthlyBalanceService::class)->recalculateClosedFrom($request->user()->id, 0, 1);
 
         return back()->with('success', 'Conexão removida do sistema. Seus lançamentos manuais foram preservados.');
     }

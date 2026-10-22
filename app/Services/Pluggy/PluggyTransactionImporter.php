@@ -7,6 +7,7 @@ use App\Models\PluggyItem;
 use App\Models\PluggyTransaction;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use App\Services\MonthlyBalanceService;
 
 class PluggyTransactionImporter
 {
@@ -106,6 +107,7 @@ class PluggyTransactionImporter
                     $created++;
                 }
             }
+            app(MonthlyBalanceService::class)->recalculateClosedFrom($connection->user_id, 0, 1);
         });
 
         return compact('created', 'updated');

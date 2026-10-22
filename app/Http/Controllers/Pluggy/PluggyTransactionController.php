@@ -8,6 +8,8 @@ use App\Models\PluggyTransaction;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use App\Services\MonthlyBalanceService;
+use Illuminate\Support\Facades\DB;
 
 class PluggyTransactionController extends Controller
 {
@@ -56,6 +58,7 @@ class PluggyTransactionController extends Controller
             return back()->withErrors(['category_id' => 'Escolha uma categoria válida.'])->withInput();
         }
 
+        DB::transaction(function () use ($transaction, $validated, $request) {
         $transaction->update([
             'description' => trim($validated['description']),
             'transaction_date' => $validated['transaction_date'],
@@ -65,6 +68,8 @@ class PluggyTransactionController extends Controller
             'user_modified_date' => true,
             'user_modified_category' => true,
         ]);
+        app(MonthlyBalanceService::class)->recalculateClosedFrom($request->user()->id, 0, 1);
+        });
 
         return redirect()
             ->route('month.show', [$transaction->transaction_date->year, $transaction->transaction_date->month])
@@ -74,10 +79,13 @@ class PluggyTransactionController extends Controller
     public function destroy(Request $request, int $transaction): RedirectResponse
     {
         $transaction = $this->transactionForUser($request, $transaction);
+        DB::transaction(function () use ($transaction, $request) {
         $transaction->update([
             'deleted_by_user_at' => now(),
             'affects_totals' => false,
         ]);
+        app(MonthlyBalanceService::class)->recalculateClosedFrom($request->user()->id, 0, 1);
+        });
 
         return back()->with('success', 'Lançamento importado removido desta aplicação. Ele não voltará nas próximas sincronizações.');
     }

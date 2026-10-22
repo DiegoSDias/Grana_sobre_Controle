@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use App\Services\MonthlyBalanceService;
 
 class SyncPluggyConnection implements ShouldQueue
 {
@@ -41,6 +42,7 @@ class SyncPluggyConnection implements ShouldQueue
                 ]);
                 $connection->accounts()->update(['is_active' => false]);
                 $connection->transactions()->update(['affects_totals' => false, 'removed_at' => now()]);
+                app(MonthlyBalanceService::class)->recalculateClosedFrom($connection->user_id, 0, 1);
             }
         }
     }

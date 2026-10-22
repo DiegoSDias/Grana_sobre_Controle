@@ -6,6 +6,8 @@ use App\Models\Category;
 use App\Models\Group;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
+use App\Services\MonthlyBalanceService;
 
 class CategoriesController extends Controller
 {
@@ -97,7 +99,10 @@ class CategoriesController extends Controller
 
         abort_if($category->expenses()->where('user_id', '!=', $request->user()->id)->exists(), 409);
         abort_if(\App\Models\PluggyTransaction::where('category_id', $category->id)->where('user_id', '!=', $request->user()->id)->exists(), 409);
-        $category->delete();
+        DB::transaction(function () use ($category, $request) {
+            $category->delete();
+            app(MonthlyBalanceService::class)->recalculateClosedFrom($request->user()->id, 0, 1);
+        });
 
         return redirect()->route('categories.index');
     }

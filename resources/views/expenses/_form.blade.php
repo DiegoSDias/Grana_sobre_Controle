@@ -178,6 +178,7 @@
             </div>
         </div>
 
+        <div id="installmentControls" @class(['hidden' => isset($expense) && $expense->installments_group && old('installment_scope', 'single') === 'single'])>
         {{-- Compra parcelada --}}
         <div>
             <label class="block text-sm font-semibold text-slate-700 mb-3">
@@ -234,6 +235,7 @@
             >
             <p class="mt-1.5 text-xs text-blue-600">Número mínimo de parcelas: 2</p>
         </div>
+        </div>
     @endif
 
     {{-- Campos ocultos --}}
@@ -247,8 +249,16 @@
     document.addEventListener('DOMContentLoaded', function () {
         const installmentRadios = document.querySelectorAll('input[name="is_installment"]');
         const installmentsField = document.getElementById('installmentsField');
+        const installmentControls = document.getElementById('installmentControls');
+        const scopeSelect = document.getElementById('installmentScope');
 
         function toggleInstallmentsField() {
+            if (!installmentsField) return;
+            const single = scopeSelect && scopeSelect.value === 'single';
+            if (installmentControls && scopeSelect) {
+                installmentControls.classList.toggle('hidden', single);
+                installmentControls.querySelectorAll('input').forEach(input => input.disabled = single);
+            }
             const selected = document.querySelector('input[name="is_installment"]:checked');
             
             if (selected && selected.value === '1') {
@@ -265,5 +275,6 @@
         installmentRadios.forEach(radio => {
             radio.addEventListener('change', toggleInstallmentsField);
         });
+        if (scopeSelect) scopeSelect.addEventListener('change', toggleInstallmentsField);
     });
 </script>
