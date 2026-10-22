@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use App\Support\Money;
 use Illuminate\Validation\ValidationException;
+use App\Models\ManualBank;
 
 class ExpenseService
 {
@@ -21,6 +22,7 @@ class ExpenseService
 
             $categoryId = $this->resolveCategory($data);
             $data['category_id'] = $categoryId;
+            $data = $this->resolveBank($data);
 
             if (!empty($data['is_installment'])) {
                 $this->createInstallments($data);
@@ -65,6 +67,7 @@ class ExpenseService
                 'month' => $data['month'],
                 'year' => $data['year'],
                 'payment_mode' => $data['payment_mode'] ?? null,
+                'manual_bank_id' => $data['manual_bank_id'], 'bank_status' => $data['bank_status'],
                 'type' => $data['type'],
                 'description' => $data['description'] ?? null,
                 'amount' => $data['amount'],
@@ -94,6 +97,7 @@ class ExpenseService
                 'month' => $date->month,
                 'year' => $date->year,
                 'payment_mode' => $data['payment_mode'] ?? null,
+                'manual_bank_id' => $data['manual_bank_id'], 'bank_status' => $data['bank_status'],
                 'type' => $data['type'],
                 'description' => $data['description'] ?? null,
                 'amount' => Money::decimal($base + ($i <= $remainder ? 1 : 0)),
@@ -117,6 +121,10 @@ class ExpenseService
             $newMonth = Carbon::parse($data['date'])->startOfMonth();
             $from = $oldMonth->lessThan($newMonth) ? $oldMonth : $newMonth;
             $data['category_id'] = $this->resolveCategory($data);
+
+            if (! ($expense->installments_group && ($data['installment_scope'] ?? 'group') === 'single')) {
+                $data = $this->resolveBank($data);
+            }
 
             if ($expense->installments_group && ($data['installment_scope'] ?? 'group') === 'single') {
                 $date = Carbon::parse($data['date']);
@@ -152,6 +160,7 @@ class ExpenseService
         $expense->update([
                 'category_id' => $data['category_id'],
                 'payment_mode' => $data['payment_mode'] ?? null,
+                'manual_bank_id' => $data['manual_bank_id'], 'bank_status' => $data['bank_status'],
                 'type' => $data['type'],
                 'date' => $date->toDateString(),
                 'year' => $date->year,
@@ -160,6 +169,18 @@ class ExpenseService
                 'amount' => $data['amount'],
             ]);
 
+    }
+
+    private function resolveBank(array $data): array
+    {
+        $choice = $data['bank_choice'];
+        $data['bank_status'] = $choice === 'unknown' ? null : ($choice === 'none' ? 'none' : 'bank');
+        $data['manual_bank_id'] = match ($choice) {
+            'unknown', 'none' => null,
+            'new' => ManualBank::firstOrCreate(['user_id' => Auth::id(), 'name' => trim($data['new_bank'])])->id,
+            default => (int) $choice,
+        };
+        return $data;
     }
 
     public function destroy(Expense $expense, string $scope = 'group') {

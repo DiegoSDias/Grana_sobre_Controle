@@ -70,6 +70,7 @@
                         </div>
                     </div>
 
+                    <div><label class="block text-sm font-semibold text-slate-700 mb-2">Banco</label><div class="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl">{{ $expense->bank_label }}</div></div>
                     {{-- Forma de pagamento --}}
                     @if ($expense->type === 'expense')
                         <div>
@@ -80,7 +81,7 @@
                                 <span class="px-3 py-1 rounded-full text-sm font-medium
                                     {{ $expense->payment_mode === 'pix' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700' }}">
 
-                                    {{ ucfirst($expense->payment_mode) }}
+                                    {{ $expense->payment_label }}
                                 </span>
                             </div>
                         </div>

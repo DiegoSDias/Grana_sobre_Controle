@@ -46,7 +46,7 @@ class UserDataIsolationTest extends TestCase
     private function payload(Category $category): array
     {
         return ['category_id' => $category->id, 'date' => '2026-10-01', 'month' => 10,
-            'year' => 2026, 'type' => 'expense', 'payment_mode' => 'pix', 'amount' => 20];
+            'year' => 2026, 'type' => 'expense', 'payment_mode' => 'pix', 'amount' => 20, 'bank_choice' => 'none'];
     }
 
     public function test_other_users_expenses_are_inaccessible_and_unchanged(): void

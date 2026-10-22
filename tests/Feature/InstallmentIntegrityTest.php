@@ -19,7 +19,7 @@ class InstallmentIntegrityTest extends TestCase
         $category = Category::create(['user_id' => $user->id, 'name' => 'Teste', 'type' => 'expense']);
         $this->actingAs($user)->post(route('expenses.store'), [
             'category_id' => $category->id, 'date' => '2027-01-31', 'type' => 'expense',
-            'amount' => '100.00', 'payment_mode' => 'cartao', 'is_installment' => '1', 'total_installments' => 3,
+            'amount' => '100.00', 'payment_mode' => 'credito', 'bank_choice' => 'none', 'is_installment' => '1', 'total_installments' => 3,
         ])->assertSessionHasNoErrors()->assertRedirect();
         $items = Expense::where('user_id', $user->id)->orderBy('current_installment')->get();
         $this->assertSame(['33.34', '33.33', '33.33'], $items->pluck('amount')->all());
@@ -42,7 +42,7 @@ class InstallmentIntegrityTest extends TestCase
         MonthlyBalance::create(['user_id' => $user->id, 'year' => 2027, 'month' => 1, 'closing_balance' => 100]);
         MonthlyBalance::create(['user_id' => $user->id, 'year' => 2027, 'month' => 2, 'closing_balance' => 100]);
         $payload = ['category_id' => $category->id, 'date' => '2026-12-31', 'type' => 'expense',
-            'amount' => '3.00', 'payment_mode' => 'pix', 'is_installment' => '1', 'total_installments' => 3];
+            'amount' => '3.00', 'payment_mode' => 'pix', 'bank_choice' => 'none', 'is_installment' => '1', 'total_installments' => 3];
         $this->post(route('expenses.store'), $payload)->assertSessionHasNoErrors();
         $items = Expense::where('user_id', $user->id)->orderBy('current_installment')->get();
         $this->assertSame(['2026-12-31', '2027-01-31', '2027-02-28'], $items->map(fn ($item) => $item->date->format('Y-m-d'))->all());
@@ -67,7 +67,7 @@ class InstallmentIntegrityTest extends TestCase
         $category = Category::create(['user_id' => $user->id, 'name' => 'Teste', 'type' => 'expense']);
         $this->actingAs($user);
         $payload = ['category_id' => $category->id, 'date' => '2028-01-31', 'type' => 'expense',
-            'amount' => '1.00', 'payment_mode' => 'cartao', 'is_installment' => '1', 'total_installments' => 2];
+            'amount' => '1.00', 'payment_mode' => 'credito', 'bank_choice' => 'none', 'is_installment' => '1', 'total_installments' => 2];
         $this->post(route('expenses.store'), $payload)->assertSessionHasNoErrors();
         $old = Expense::where('user_id', $user->id)->orderBy('current_installment')->get();
         $this->assertSame(['0.50', '0.50'], $old->pluck('amount')->all());
@@ -87,7 +87,7 @@ class InstallmentIntegrityTest extends TestCase
         $category = Category::create(['user_id' => $user->id, 'name' => 'Teste', 'type' => 'expense']);
         $this->actingAs($user);
         $payload = ['category_id' => $category->id, 'date' => '2026-04-30', 'type' => 'expense',
-            'amount' => '0.01', 'payment_mode' => 'cartao', 'is_installment' => '1', 'total_installments' => 2];
+            'amount' => '0.01', 'payment_mode' => 'credito', 'bank_choice' => 'none', 'is_installment' => '1', 'total_installments' => 2];
         $this->post(route('expenses.store'), $payload)->assertSessionHasErrors('amount');
         $this->post(route('expenses.store'), array_merge($payload, ['amount' => '1.001']))->assertSessionHasErrors('amount');
         $this->post(route('expenses.store'), array_merge($payload, ['amount' => '1.00', 'total_installments' => null]))->assertSessionHasErrors('total_installments');
@@ -101,7 +101,7 @@ class InstallmentIntegrityTest extends TestCase
         $category = Category::create(['user_id' => $user->id, 'name' => 'Teste', 'type' => 'expense']);
         $this->actingAs($user)->post(route('expenses.store'), [
             'category_id' => $category->id, 'date' => '2027-01-31', 'type' => 'expense',
-            'amount' => '10.00', 'payment_mode' => 'cartao', 'is_installment' => '1', 'total_installments' => 2,
+            'amount' => '10.00', 'payment_mode' => 'credito', 'bank_choice' => 'none', 'is_installment' => '1', 'total_installments' => 2,
         ])->assertSessionHasNoErrors();
         $items = Expense::where('user_id', $user->id)->orderBy('current_installment')->get();
         $this->actingAs($other)->get(route('expenses.confirm-delete', $items[0]))->assertNotFound();

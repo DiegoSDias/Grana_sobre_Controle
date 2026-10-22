@@ -26,6 +26,13 @@ class ExpensesRequest extends FormRequest
      */
     public function rules(): array
     {
+        $expense = $this->route('expense') !== null
+            ? Expense::where('user_id', $this->user()->id)->find($this->route('expense')) : null;
+        $single = $expense?->installments_group && $this->input('installment_scope') === 'single';
+        $paymentModes = ['pix', 'dinheiro', 'debito', 'credito'];
+        if ($expense?->payment_mode === 'cartao') {
+            $paymentModes[] = 'cartao';
+        }
         return [
             'description' => 'nullable|string|max:255',
             'date' => 'required|date',
@@ -36,7 +43,16 @@ class ExpensesRequest extends FormRequest
                 }
             }],
             'new_category' => 'nullable|required_if:category_id,new|string|max:100',
-            'payment_mode' => 'nullable|required_if:type,expense|in:pix,cartao',
+            'payment_mode' => ['nullable', 'required_if:type,expense', \Illuminate\Validation\Rule::in($paymentModes)],
+            'bank_choice' => [\Illuminate\Validation\Rule::requiredIf(! $single), 'nullable', function ($attribute, $value, $fail) use ($expense, $single) {
+                if ($single) return;
+                if ($value === 'none' || $value === 'new') return;
+                if ($value === 'unknown' && $expense && $expense->bank_status === null) return;
+                if (! is_scalar($value) || ! ctype_digit((string) $value) || ! \App\Models\ManualBank::where('user_id', $this->user()->id)->whereKey($value)->exists()) {
+                    $fail('Escolha um banco válido ou informe que não foi realizado por meio de banco.');
+                }
+            }],
+            'new_bank' => ['nullable', 'required_if:bank_choice,new', 'string', 'max:100'],
             'type' => 'required|in:income,expense',
             'is_installment' => 'boolean',
             'total_installments' => [

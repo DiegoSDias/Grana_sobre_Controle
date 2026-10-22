@@ -32,7 +32,7 @@ class MonthsController extends Controller
                                 ->where('type', 'expense')
                                 ->get();
 
-        $manualIncomes = Expense::with(['category' => fn ($query) => $query->where('user_id', Auth::id())])
+        $manualIncomes = Expense::with(['manualBank', 'category' => fn ($query) => $query->where('user_id', Auth::id())])
                                 ->where('user_id', Auth::id())
                                 ->where('type', 'income')
                                 ->where('month', $month)
@@ -48,7 +48,7 @@ class MonthsController extends Controller
                                 })
                                 ->get();
 
-        $manualExpenses = Expense::with(['category' => fn ($query) => $query->where('user_id', Auth::id())])
+        $manualExpenses = Expense::with(['manualBank', 'category' => fn ($query) => $query->where('user_id', Auth::id())])
                                 ->where('user_id', Auth::id())
                                 ->where('type', 'expense')
                                 ->where('month', $month)
@@ -94,7 +94,13 @@ class MonthsController extends Controller
                 PluggyTransaction::CLASSIFICATION_CASHBACK,
             ])
             ->when($request->expense_category, fn ($q) => $q->where('category_id', $request->expense_category))
-            ->when($request->payment_mode, fn ($q) => $q->where('payment_method', $request->payment_mode === 'cartao' ? 'card' : $request->payment_mode))
+            ->when($request->payment_mode, function ($q) use ($request) {
+                if (in_array($request->payment_mode, ['pix', 'cartao'], true)) {
+                    $q->where('payment_method', $request->payment_mode === 'cartao' ? 'card' : 'pix');
+                } else {
+                    $q->whereRaw('1 = 0');
+                }
+            })
             ->when($request->is_installment !== null, fn ($q) => $q->where('is_installment', $request->is_installment))
             ->when($request->expense_value, fn ($q) => $q->where('amount', $request->expense_value_op, $request->expense_value))
             ->when($request->date_value, fn ($q) => $q->whereDate('transaction_date', $request->date_value))

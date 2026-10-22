@@ -39,7 +39,7 @@
                             <option value="single" @selected(old('installment_scope', 'single') === 'single')>Somente esta parcela</option>
                             <option value="group" @selected(old('installment_scope') === 'group')>Todo o grupo de parcelas</option>
                         </select>
-                        <p class="text-sm text-slate-600 mb-4">Para o grupo, informe o valor total e a data da primeira parcela. As parcelas serão recriadas.</p>
+                        <p class="text-sm text-slate-600 mb-4">Para o grupo, informe o valor total e a data da primeira parcela. As parcelas serão recriadas com o banco e a forma de pagamento informados, substituindo diferenças anteriores.</p>
                     @endif
 
                     @include('expenses._form', [

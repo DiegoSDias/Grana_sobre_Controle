@@ -91,6 +91,8 @@
                                         @endif
                                         @if($income instanceof \App\Models\PluggyTransaction)
                                             <span class="ml-2 inline-flex px-2 py-1 rounded-lg text-xs font-medium bg-blue-50 text-blue-700">Banco</span>
+                                        @else
+                                            <span class="block text-xs text-slate-500 mt-1">{{ $income->bank_label }}</span>
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 text-center text-emerald-700 font-semibold text-base">
@@ -202,12 +204,14 @@
                                         @endif
                                         @if($expense instanceof \App\Models\PluggyTransaction)
                                             <span class="ml-2 inline-flex px-2 py-1 rounded-lg text-xs font-medium bg-blue-50 text-blue-700">Banco</span>
+                                        @else
+                                            <span class="block text-xs text-slate-500 mt-1">{{ $expense->bank_label }}</span>
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 items-center text-center">
                                         <span class="inline-flex px-2.5 py-1 rounded-lg text-xs font-medium
                                             {{ $expense->payment_mode === 'pix' ? 'bg-purple-50 text-purple-700 border border-purple-100' : 'bg-amber-50 text-amber-700 border border-amber-100' }}">
-                                            {{ ucfirst($expense->payment_mode) }}
+                                            {{ $expense instanceof \App\Models\PluggyTransaction ? match ($expense->payment_method) { 'pix' => 'Pix', 'card' => 'Cartão — modalidade não informada', default => 'Outro' } : $expense->payment_label }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 text-center text-emerald-700 font-semibold text-base">

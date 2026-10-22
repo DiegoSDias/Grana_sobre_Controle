@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Str;
 use App\Support\Money;
 use Carbon\Carbon;
+use App\Models\ManualBank;
 
 class ExpensesController extends Controller
 {
@@ -42,7 +43,8 @@ class ExpensesController extends Controller
                     ->where('type', $type)
                     ->get();
         
-        return view('expenses.create', compact('type', 'year', 'month', 'categories'));
+        $banks = ManualBank::where('user_id', Auth::id())->orderBy('name')->get();
+        return view('expenses.create', compact('type', 'year', 'month', 'categories', 'banks'));
     }
 
     /**
@@ -93,7 +95,8 @@ class ExpensesController extends Controller
             $groupDate = $installments->first()?->date->format('Y-m-d');
         }
 
-        return view('expenses.edit', compact('expense', 'type', 'year', 'month', 'categories', 'groupTotal', 'groupDate'));
+        $banks = ManualBank::where('user_id', Auth::id())->orderBy('name')->get();
+        return view('expenses.edit', compact('expense', 'type', 'year', 'month', 'categories', 'groupTotal', 'groupDate', 'banks'));
     }
 
     /**

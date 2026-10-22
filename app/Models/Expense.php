@@ -16,6 +16,8 @@ class Expense extends Model
         'month',
         'year',
         'payment_mode',
+        'manual_bank_id',
+        'bank_status',
         'type',
         'description',
         'amount',
@@ -36,6 +38,29 @@ class Expense extends Model
 
     public function category(): BelongsTo {
         return $this->belongsTo(Category::class);
+    }
+
+    public function manualBank(): BelongsTo
+    {
+        return $this->belongsTo(ManualBank::class);
+    }
+
+    public function getBankLabelAttribute(): string
+    {
+        return match ($this->bank_status) {
+            'bank' => $this->manualBank?->name ?? 'Banco indisponível',
+            'none' => 'Não realizado por meio de um banco',
+            default => 'Banco não informado',
+        };
+    }
+
+    public function getPaymentLabelAttribute(): string
+    {
+        return match ($this->payment_mode) {
+            'pix' => 'Pix', 'dinheiro' => 'Dinheiro', 'debito' => 'Cartão de débito',
+            'credito' => 'Cartão de crédito', 'cartao' => 'Cartão — modalidade não informada',
+            default => 'Não informado',
+        };
     }
 
     public function scopeFromUser(Builder $query, int $userId)
