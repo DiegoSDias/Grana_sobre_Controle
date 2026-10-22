@@ -13,12 +13,18 @@ class PluggyWebhookTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config()->set('services.pluggy.webhook_secret', 'webhook-secret');
+    }
+
     public function test_it_records_an_item_created_by_pluggy_for_its_user(): void
     {
         Queue::fake();
         $user = User::factory()->create();
 
-        $response = $this->postJson(route('pluggy.webhook'), [
+        $response = $this->postJson(route('pluggy.webhook', ['token' => 'webhook-secret']), [
             'event' => 'item/created',
             'eventId' => 'a34715d1-a440-4360-bc75-916fe6d9ee00',
             'itemId' => 'b34715d1-a440-4360-bc75-916fe6d9ee00',
@@ -49,7 +55,7 @@ class PluggyWebhookTest extends TestCase
         Queue::fake();
         $item = PluggyItem::factory()->create();
 
-        $this->postJson(route('pluggy.webhook'), [
+        $this->postJson(route('pluggy.webhook', ['token' => 'webhook-secret']), [
             'event' => 'item/deleted',
             'eventId' => 'c34715d1-a440-4360-bc75-916fe6d9ee00',
             'itemId' => $item->pluggy_item_id,
@@ -70,8 +76,8 @@ class PluggyWebhookTest extends TestCase
             'clientUserId' => (string) $user->id,
         ];
 
-        $this->postJson(route('pluggy.webhook'), $payload)->assertNoContent();
-        $this->postJson(route('pluggy.webhook'), $payload)->assertNoContent();
+        $this->postJson(route('pluggy.webhook', ['token' => 'webhook-secret']), $payload)->assertNoContent();
+        $this->postJson(route('pluggy.webhook', ['token' => 'webhook-secret']), $payload)->assertNoContent();
 
         $this->assertDatabaseCount('pluggy_webhook_events', 1);
         Queue::assertPushed(ProcessPluggyWebhook::class, 1);

@@ -77,7 +77,7 @@ class ExpensesController extends Controller
     public function edit(string $id)
     {
         
-        $expense = Expense::where('user_id', Auth::id())->where('id', $id)->first();
+        $expense = Expense::where('user_id', Auth::id())->findOrFail($id);
         $type = $expense->type;
         $year = $expense->year;
         $month = $expense->month;
@@ -100,14 +100,14 @@ class ExpensesController extends Controller
         $data['month'] = $request->month;
 
         if(!empty($data['is_installment'])) {
-            $expense = Expense::findOrFail($id);
+            $expense = Expense::where('user_id', Auth::id())->findOrFail($id);
             $data['current_installment'] = $expense->current_installment;
             if($expense->installments_group) {
-                $expense = Expense::where('installments_group', $expense->installments_group)
+                $expense = Expense::where('user_id', Auth::id())->where('installments_group', $expense->installments_group)
                                     ->firstOrFail();
             }
         } else {
-             $expense = Expense::findOrFail($id);
+             $expense = Expense::where('user_id', Auth::id())->findOrFail($id);
         }
         
         $this->expenseService->update($expense, $data);
@@ -122,6 +122,7 @@ class ExpensesController extends Controller
      */
     public function destroy(Expense $expense)
     {
+        abort_unless($expense->user_id === Auth::id(), 404);
         $this->expenseService->destroy($expense);
 
         return redirect()

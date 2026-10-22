@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Group;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CategoriesController extends Controller
 {
@@ -39,16 +40,13 @@ class CategoriesController extends Controller
      */
     public function store(Request $request)
     {
-        $user_id = $request->user()->id;
-        $name = $request->name;
-        $type = $request->type;
-        $group_id = $request->group_id;
+        $data = $this->validateCategory($request);
 
         Category::create([
-            'user_id' => $user_id,
-            'name' => $name,
-            'type' => $type,
-            'group_id' => $group_id 
+            'user_id' => $request->user()->id,
+            'name' => $data['name'],
+            'type' => $data['type'],
+            'group_id' => $data['group_id'] ?? null,
         ]);
 
         return redirect()->route('categories.index');
@@ -59,7 +57,7 @@ class CategoriesController extends Controller
      */
     public function show(string $id)
     {
-        //
+        abort(404);
     }
 
     /**
@@ -67,7 +65,7 @@ class CategoriesController extends Controller
      */
     public function edit(string $id, Request $request)
     {
-        $category = Category::find($id);
+        $category = Category::where('user_id', $request->user()->id)->findOrFail($id);
         $groups = Group::where('user_id', $request->user()->id)->get();
         
         return view('categories.edit', compact('category', 'groups'));
@@ -78,18 +76,13 @@ class CategoriesController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        $category = Category::find($id);
-
-        $user_id = $request->user()->id;
-        $name = $request->name;
-        $type = $request->type;
-        $group_id = $request->group_id;
+        $category = Category::where('user_id', $request->user()->id)->findOrFail($id);
+        $data = $this->validateCategory($request);
 
         $category->update([
-            'user_id' => $user_id,
-            'name' => $name,
-            'type' => $type,
-            'group_id' => $group_id
+            'name' => $data['name'],
+            'type' => $data['type'],
+            'group_id' => $data['group_id'] ?? null,
         ]);
 
         return redirect()->route('categories.index');
@@ -98,12 +91,23 @@ class CategoriesController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Request $request, string $id)
     {
-        $category = Category::find($id);
+        $category = Category::where('user_id', $request->user()->id)->findOrFail($id);
 
+        abort_if($category->expenses()->where('user_id', '!=', $request->user()->id)->exists(), 409);
+        abort_if(\App\Models\PluggyTransaction::where('category_id', $category->id)->where('user_id', '!=', $request->user()->id)->exists(), 409);
         $category->delete();
 
         return redirect()->route('categories.index');
+    }
+
+    private function validateCategory(Request $request): array
+    {
+        return $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'type' => ['required', Rule::in(['income', 'expense'])],
+            'group_id' => ['nullable', 'integer', Rule::exists('groups', 'id')->where('user_id', $request->user()->id)],
+        ]);
     }
 }

@@ -56,6 +56,7 @@ class PluggySyncService
             }
 
             $connection->accounts()
+                ->where('user_id', $connection->user_id)
                 ->when($remoteAccountIds !== [], fn ($query) => $query->whereNotIn('pluggy_account_id', $remoteAccountIds))
                 ->update(['is_active' => false]);
 
@@ -83,7 +84,7 @@ class PluggySyncService
     public function markTransactionsDeleted(string $pluggyItemId, array $transactionIds): int
     {
         return PluggyTransaction::query()
-            ->whereHas('connection', fn ($query) => $query->where('pluggy_item_id', $pluggyItemId))
+            ->whereHas('connection', fn ($query) => $query->where('pluggy_item_id', $pluggyItemId)->whereColumn('pluggy_items.user_id', 'pluggy_transactions.user_id'))
             ->whereIn('pluggy_transaction_id', $transactionIds)
             ->update(['removed_at' => now(), 'affects_totals' => false]);
     }
@@ -107,6 +108,11 @@ class PluggySyncService
     /** @param array<string, mixed> $remoteAccount */
     private function upsertAccount(PluggyItem $connection, array $remoteAccount): PluggyAccount
     {
+        $existing = $connection->accounts()->where('pluggy_account_id', $remoteAccount['id'])->first();
+        if ($existing && (int) $existing->user_id !== (int) $connection->user_id) {
+            throw new \LogicException('A conta existente não pertence ao proprietário da conexão.');
+        }
+
         return PluggyAccount::query()->updateOrCreate(
             ['pluggy_connection_id' => $connection->id, 'pluggy_account_id' => $remoteAccount['id']],
             [

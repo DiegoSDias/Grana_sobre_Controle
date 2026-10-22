@@ -29,7 +29,8 @@ class ExpenseService
     }
 
     public function show(string $id) {
-        $data = Expense::with('category')->findOrFail($id);
+        $data = Expense::with(['category' => fn ($query) => $query->where('user_id', Auth::id())])
+            ->where('user_id', Auth::id())->findOrFail($id);
         return $data;
     }
 
@@ -130,7 +131,7 @@ class ExpenseService
                     1
                     )->subMonths($expense->current_installment - 1);
                     
-                Expense::where('installments_group', $expense->installments_group)->delete();
+                Expense::where('user_id', Auth::id())->where('installments_group', $expense->installments_group)->delete();
                     
                 $data['month'] = $baseDate->month;
                 $data['year']  = $baseDate->year;
@@ -148,7 +149,7 @@ class ExpenseService
                     1
                 )->subMonths($expense->current_installment - 1);
 
-                Expense::where('installments_group', $expense->installments_group)->delete();
+                Expense::where('user_id', Auth::id())->where('installments_group', $expense->installments_group)->delete();
 
                 $data['month'] = $baseDate->month;
                 $data['year']  = $baseDate->year;
@@ -178,7 +179,7 @@ class ExpenseService
     public function destroy(Expense $expense) {
         DB::transaction(function() use($expense) {
             if(!empty($expense->is_installment)) {
-                Expense::where('installments_group', $expense->installments_group)->delete();
+                Expense::where('user_id', Auth::id())->where('installments_group', $expense->installments_group)->delete();
             } else {
                 $expense->delete();
             }

@@ -30,7 +30,7 @@ class PluggyAccountController extends Controller
         return view('pluggy.connections', [
             'connections' => $request->user()->pluggyItems()
                 ->where('is_active', true)
-                ->with(['accounts' => fn ($query) => $query->where('is_active', true)])
+                ->with(['accounts' => fn ($query) => $query->where('user_id', $request->user()->id)->where('is_active', true)])
                 ->latest()
                 ->get(),
             'inactiveConnections' => PluggyItem::withTrashed()
@@ -57,7 +57,7 @@ class PluggyAccountController extends Controller
                 ->first();
 
             if ($existingConnection !== null && $existingConnection->user_id !== $request->user()->id) {
-                return response()->json(['message' => 'Esta conexão já está vinculada a outro usuário.'], 403);
+                return response()->json(['message' => 'Conexão não encontrada.'], 404);
             }
 
             if ($existingConnection !== null) {
@@ -68,7 +68,7 @@ class PluggyAccountController extends Controller
                     'last_sync_status' => 'queued',
                     'deleted_at' => null,
                 ]);
-                $existingConnection->accounts()->update(['is_active' => true]);
+                $existingConnection->accounts()->where('user_id', $request->user()->id)->update(['is_active' => true]);
                 SyncPluggyConnection::dispatch($existingConnection->id);
 
                 return response()->json(['message' => 'Conexão existente reativada e sincronização agendada.']);
@@ -77,22 +77,20 @@ class PluggyAccountController extends Controller
             $item = $pluggyService->getItem($validated['itemId']);
             $clientUserId = (string) ($item['clientUserId'] ?? '');
 
-            if ($clientUserId !== '' && $clientUserId !== (string) $request->user()->id) {
-                return response()->json(['message' => 'Esta conexão não pertence ao usuário atual.'], 403);
+            if ($clientUserId === '' || $clientUserId !== (string) $request->user()->id) {
+                return response()->json(['message' => 'Não foi possível confirmar o proprietário desta conexão.'], 403);
             }
 
-            // Itens legados do MeuPluggy podem não ter clientUserId. Não fazemos PATCH
-            // neles: a atualização pode disparar o bloqueio de credenciais duplicadas.
-
-            PluggyItem::withTrashed()->updateOrCreate(
-                ['pluggy_item_id' => $validated['itemId']],
+            // Uma inserção não pode transferir a propriedade em caso de requisições concorrentes.
+            PluggyItem::create(
                 [
+                    'pluggy_item_id' => $validated['itemId'],
                     'user_id' => $request->user()->id,
                     'last_event' => 'item/created',
                     'last_error' => null,
                     'deleted_at' => null,
                     'is_active' => true,
-                ],
+                ]
             );
         } catch (RequestException $exception) {
             $pluggyCode = (string) ($exception->response?->json('codeDescription') ?? '');
@@ -118,7 +116,7 @@ class PluggyAccountController extends Controller
             return response()->json(['message' => 'Não foi possível registrar a conexão bancária.'], 500);
         }
 
-        $connection = PluggyItem::query()->where('pluggy_item_id', $validated['itemId'])->firstOrFail();
+        $connection = $request->user()->pluggyItems()->where('pluggy_item_id', $validated['itemId'])->firstOrFail();
         SyncPluggyConnection::dispatch($connection->id);
 
         return response()->json(['message' => 'Conexão bancária registrada e sincronização agendada.'], 201);
@@ -136,8 +134,9 @@ class PluggyAccountController extends Controller
     {
         $item = $request->user()->pluggyItems()->where('is_active', true)->findOrFail($connection);
         $item->update(['is_active' => false, 'last_sync_status' => 'DISCONNECTED']);
-        $item->accounts()->update(['is_active' => false]);
+        $item->accounts()->where('user_id', $request->user()->id)->update(['is_active' => false]);
         PluggyTransaction::query()
+            ->where('user_id', $request->user()->id)
             ->where('pluggy_connection_id', $item->id)
             ->update(['affects_totals' => false, 'removed_at' => now()]);
 
@@ -153,7 +152,7 @@ class PluggyAccountController extends Controller
 
         $item->restore();
         $item->update(['is_active' => true, 'last_error' => null, 'last_sync_status' => 'queued', 'deleted_at' => null]);
-        $item->accounts()->update(['is_active' => true]);
+        $item->accounts()->where('user_id', $request->user()->id)->update(['is_active' => true]);
         SyncPluggyConnection::dispatch($item->id);
 
         return back()->with('success', 'Reconexão solicitada. A Pluggy validará a conexão em instantes.');

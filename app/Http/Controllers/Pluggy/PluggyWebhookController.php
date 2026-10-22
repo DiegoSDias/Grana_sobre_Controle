@@ -20,10 +20,9 @@ class PluggyWebhookController extends Controller
             return response()->noContent(Response::HTTP_UNSUPPORTED_MEDIA_TYPE);
         }
 
-        if ($secret = config('services.pluggy.webhook_secret')) {
-            if (! hash_equals($secret, (string) $request->query('token'))) {
-                return response()->noContent(Response::HTTP_UNAUTHORIZED);
-            }
+        $secret = config('services.pluggy.webhook_secret');
+        if (! is_string($secret) || $secret === '' || ! hash_equals($secret, (string) $request->query('token'))) {
+            return response()->noContent(Response::HTTP_UNAUTHORIZED);
         }
 
         $event = $request->json()->all();
@@ -36,14 +35,22 @@ class PluggyWebhookController extends Controller
             return response()->noContent(Response::HTTP_BAD_REQUEST);
         }
 
+        if ($itemId && str_starts_with($eventName, 'item/')) {
+            $existing = PluggyItem::withTrashed()->where('pluggy_item_id', $itemId)->first();
+            $clientUserId = filter_var($event['clientUserId'] ?? null, FILTER_VALIDATE_INT);
+            if ($existing && $clientUserId && (int) $existing->user_id !== $clientUserId) {
+                return response()->noContent(Response::HTTP_UNAUTHORIZED);
+            }
+        }
+
         Log::info('Webhook Pluggy recebido.', [
             'event' => $eventName,
             'event_id' => $event['eventId'] ?? null,
             'item_id' => $itemId,
         ]);
 
-        if (is_string($itemId) && str_starts_with($eventName, 'item/')) {
-            $this->storeItemEvent($event, $itemId);
+        if (is_string($itemId) && str_starts_with($eventName, 'item/') && ! $this->storeItemEvent($event, $itemId)) {
+            return response()->noContent(Response::HTTP_UNAUTHORIZED);
         }
 
         $webhookEvent = PluggyWebhookEvent::query()->firstOrCreate(
@@ -59,7 +66,7 @@ class PluggyWebhookController extends Controller
     }
 
     /** @param array<string, mixed> $event */
-    private function storeItemEvent(array $event, string $itemId): void
+    private function storeItemEvent(array $event, string $itemId): bool
     {
         $clientUserId = filter_var($event['clientUserId'] ?? null, FILTER_VALIDATE_INT);
 
@@ -69,18 +76,27 @@ class PluggyWebhookController extends Controller
                 'item_id' => $itemId,
             ]);
 
-            return;
+            return true;
         }
 
-        PluggyItem::withTrashed()->updateOrCreate(
+        $connection = PluggyItem::withTrashed()->firstOrCreate(
             ['pluggy_item_id' => $itemId],
+            ['user_id' => $clientUserId, 'last_event' => $event['event']],
+        );
+
+        if ((int) $connection->user_id !== $clientUserId) {
+            return false;
+        }
+
+        $connection->update(
             [
-                'user_id' => $clientUserId,
                 'last_event' => $event['event'],
                 'last_error' => $event['error']['message'] ?? $event['error']['description'] ?? null,
                 'deleted_at' => $event['event'] === 'item/deleted' ? now() : null,
                 'is_active' => $event['event'] !== 'item/deleted',
             ],
         );
+
+        return true;
     }
 }

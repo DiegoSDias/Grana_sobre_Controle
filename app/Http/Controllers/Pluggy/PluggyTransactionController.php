@@ -85,7 +85,11 @@ class PluggyTransactionController extends Controller
     private function transactionForUser(Request $request, int $transaction): PluggyTransaction
     {
         return PluggyTransaction::query()
-            ->with(['category', 'account', 'connection'])
+            ->with([
+                'category' => fn ($query) => $query->where('user_id', $request->user()->id),
+                'account' => fn ($query) => $query->where('user_id', $request->user()->id),
+                'connection' => fn ($query) => $query->where('user_id', $request->user()->id),
+            ])
             ->where('user_id', $request->user()->id)
             ->whereNull('removed_at')
             ->whereNull('deleted_by_user_at')

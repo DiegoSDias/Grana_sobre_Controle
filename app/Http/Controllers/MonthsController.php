@@ -31,7 +31,7 @@ class MonthsController extends Controller
                                 ->where('type', 'expense')
                                 ->get();
 
-        $manualIncomes = Expense::with('category')
+        $manualIncomes = Expense::with(['category' => fn ($query) => $query->where('user_id', Auth::id())])
                                 ->where('user_id', Auth::id())
                                 ->where('type', 'income')
                                 ->where('month', $month)
@@ -47,7 +47,7 @@ class MonthsController extends Controller
                                 })
                                 ->get();
 
-        $manualExpenses = Expense::with('category')
+        $manualExpenses = Expense::with(['category' => fn ($query) => $query->where('user_id', Auth::id())])
                                 ->where('user_id', Auth::id())
                                 ->where('type', 'expense')
                                 ->where('month', $month)
@@ -70,7 +70,7 @@ class MonthsController extends Controller
                                 ->orderBy('date')
                                 ->get();
 
-        $importedBase = PluggyTransaction::with('category')
+        $importedBase = PluggyTransaction::with(['category' => fn ($query) => $query->where('user_id', Auth::id())])
             ->where('user_id', Auth::id())
             ->forMonth((int) $year, (int) $month)
             ->whereNull('removed_at')

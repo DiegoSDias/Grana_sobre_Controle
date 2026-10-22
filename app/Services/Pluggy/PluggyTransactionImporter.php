@@ -22,6 +22,10 @@ class PluggyTransactionImporter
      */
     public function import(PluggyItem $connection, PluggyAccount $account, array $transactions): array
     {
+        if ((int) $account->user_id !== (int) $connection->user_id || (int) $account->pluggy_connection_id !== (int) $connection->id) {
+            throw new \LogicException('A conta não pertence à conexão informada.');
+        }
+
         $created = 0;
         $updated = 0;
 
@@ -112,6 +116,9 @@ class PluggyTransactionImporter
     {
         $byPluggyId = PluggyTransaction::query()->where('pluggy_transaction_id', $transaction['id'])->first();
         if ($byPluggyId) {
+            if ((int) $byPluggyId->user_id !== $userId) {
+                throw new \LogicException('Identificador de transação já vinculado a outro proprietário.');
+            }
             return $byPluggyId;
         }
 
