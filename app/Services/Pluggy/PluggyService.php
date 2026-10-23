@@ -170,6 +170,21 @@ class PluggyService
         return $transactions;
     }
 
+    /** Returns true only when the authenticated transaction endpoint confirms a 404. */
+    public function isTransactionMissing(string $transactionId): bool
+    {
+        $response = $this->authenticatedClient()->get($this->baseUrl . '/transactions/' . rawurlencode($transactionId));
+        if ($response->status() === 404) {
+            return true;
+        }
+        $response->throw();
+        $payload = $response->json();
+        if (! is_array($payload) || ($payload['id'] ?? null) !== $transactionId) {
+            throw new LogicException('Resposta de transação inválida.');
+        }
+        return false;
+    }
+
     private function authenticatedClient(): PendingRequest
     {
         return $this->client()->withHeaders(['X-API-KEY' => $this->getApiKey()]);

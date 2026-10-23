@@ -5,11 +5,11 @@ namespace App\Http\Controllers\Pluggy;
 use App\Http\Controllers\Controller;
 use App\Jobs\ProcessPluggyWebhook;
 use App\Models\PluggyItem;
-use App\Models\User;
 use App\Models\PluggyWebhookEvent;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class PluggyWebhookController extends Controller
@@ -21,7 +21,9 @@ class PluggyWebhookController extends Controller
         }
 
         $secret = config('services.pluggy.webhook_secret');
-        if (! is_string($secret) || $secret === '' || ! hash_equals($secret, (string) $request->query('token'))) {
+        $provided = (string) ($request->header('X-Pluggy-Webhook-Secret')
+            ?: (config('services.pluggy.webhook_allow_query_token') ? $request->query('token') : ''));
+        if (! is_string($secret) || $secret === '' || ! hash_equals($secret, $provided)) {
             return response()->noContent(Response::HTTP_UNAUTHORIZED);
         }
 
@@ -30,8 +32,20 @@ class PluggyWebhookController extends Controller
         $eventId = $event['eventId'] ?? null;
         $itemId = $event['itemId'] ?? null;
 
-        if (! is_string($eventName) || ! is_string($eventId) || ! Str::isUuid($eventId)
-            || ($itemId !== null && (! is_string($itemId) || ! Str::isUuid($itemId)))) {
+        if (! is_string($eventName) || $eventName === '' || strlen($eventName) > 80 || ! is_string($eventId) || ! Str::isUuid($eventId)
+            || ($itemId !== null && (! is_string($itemId) || ! Str::isUuid($itemId)))
+            || ((str_starts_with($eventName, 'item/') || str_starts_with($eventName, 'transactions/')) && ! $itemId)) {
+            return response()->noContent(Response::HTTP_BAD_REQUEST);
+        }
+
+        $ids = $event['transactionIds'] ?? [];
+        $clientId = $event['clientUserId'] ?? null;
+        if ($clientId !== null && (! is_string($clientId) && ! is_int($clientId)
+            || strlen((string) $clientId) > 20 || ! ctype_digit((string) $clientId))) {
+            return response()->noContent(Response::HTTP_BAD_REQUEST);
+        }
+        if (! is_array($ids) || ! array_is_list($ids) || count($ids) > 1000
+            || collect($ids)->contains(fn ($id) => ! is_string($id) || ! Str::isUuid($id))) {
             return response()->noContent(Response::HTTP_BAD_REQUEST);
         }
 
@@ -43,60 +57,33 @@ class PluggyWebhookController extends Controller
             }
         }
 
-        Log::info('Webhook Pluggy recebido.', [
-            'event' => $eventName,
-            'event_id' => $event['eventId'] ?? null,
-            'item_id' => $itemId,
-        ]);
-
-        if (is_string($itemId) && str_starts_with($eventName, 'item/') && ! $this->storeItemEvent($event, $itemId)) {
-            return response()->noContent(Response::HTTP_UNAUTHORIZED);
+        // Database queue and event must share a transaction; sync and external queue drivers
+        // cannot provide this delivery guarantee.
+        $queueName = config('queue.default');
+        $queue = config("queue.connections.$queueName");
+        if (($queue['driver'] ?? null) !== 'database'
+            || (($queue['connection'] ?? null) !== null && $queue['connection'] !== config('database.default'))) {
+            Log::error('Fila de webhook Pluggy não é transacional com o banco padrão.');
+            return response()->noContent(Response::HTTP_SERVICE_UNAVAILABLE);
         }
 
-        $webhookEvent = PluggyWebhookEvent::query()->firstOrCreate(
-            ['event_id' => $eventId],
-            ['event' => $eventName, 'pluggy_item_id' => $itemId, 'payload' => $event, 'received_at' => now()],
-        );
-
-        if ($webhookEvent->wasRecentlyCreated) {
-            ProcessPluggyWebhook::dispatch($webhookEvent->id);
+        $payload = ['itemId' => $itemId, 'clientUserId' => $clientId, 'transactionIds' => $ids];
+        try {
+            $accepted = DB::transaction(function () use ($eventId, $eventName, $itemId, $payload) {
+                $saved = PluggyWebhookEvent::query()->firstOrCreate(
+                    ['event_id' => $eventId],
+                    ['event' => $eventName, 'pluggy_item_id' => $itemId, 'payload' => $payload, 'received_at' => now()],
+                );
+                if (! $saved->wasRecentlyCreated) {
+                    return $saved->event === $eventName && $saved->pluggy_item_id === $itemId;
+                }
+                ProcessPluggyWebhook::dispatch($saved->id)->beforeCommit();
+                return true;
+            });
+            return response()->noContent($accepted ? 200 : 409);
+        } catch (\Throwable $exception) {
+            Log::error('Falha ao registrar webhook Pluggy.', ['exception' => $exception::class]);
+            return response()->noContent(Response::HTTP_SERVICE_UNAVAILABLE);
         }
-
-        return response()->noContent(200);
-    }
-
-    /** @param array<string, mixed> $event */
-    private function storeItemEvent(array $event, string $itemId): bool
-    {
-        $clientUserId = filter_var($event['clientUserId'] ?? null, FILTER_VALIDATE_INT);
-
-        if (! $clientUserId || ! User::query()->whereKey($clientUserId)->exists()) {
-            Log::warning('Webhook Pluggy de item sem usuário local válido.', [
-                'event' => $event['event'],
-                'item_id' => $itemId,
-            ]);
-
-            return true;
-        }
-
-        $connection = PluggyItem::withTrashed()->firstOrCreate(
-            ['pluggy_item_id' => $itemId],
-            ['user_id' => $clientUserId, 'last_event' => $event['event']],
-        );
-
-        if ((int) $connection->user_id !== $clientUserId) {
-            return false;
-        }
-
-        $connection->update(
-            [
-                'last_event' => $event['event'],
-                'last_error' => ! empty($event['error']) ? 'A instituição informou um problema na conexão. Verifique o estado da sincronização.' : null,
-                'deleted_at' => $event['event'] === 'item/deleted' ? now() : null,
-                'is_active' => $event['event'] !== 'item/deleted',
-            ],
-        );
-
-        return true;
     }
 }
