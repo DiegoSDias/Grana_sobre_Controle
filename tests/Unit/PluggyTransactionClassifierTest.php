@@ -92,7 +92,7 @@ class PluggyTransactionClassifierTest extends TestCase
         $this->assertTrue($result['affects_totals']);
     }
 
-    public function test_it_treats_debit_card_transactions_as_pix_for_now(): void
+    public function test_it_does_not_infer_pix_from_card_operations(): void
     {
         $result = (new PluggyTransactionClassifier())->classify([
             'type' => 'DEBIT',
@@ -100,6 +100,23 @@ class PluggyTransactionClassifierTest extends TestCase
             'description' => 'Compra no débito',
         ], 'BANK');
 
-        $this->assertSame('pix', $result['payment_method']);
+        $this->assertSame('card', $result['payment_method']);
+    }
+
+    public function test_payment_method_requires_consistent_evidence(): void
+    {
+        $classifier = new PluggyTransactionClassifier();
+        foreach ([
+            [['operationType' => 'PIX'], 'BANK', 'pix'],
+            [['paymentData' => ['paymentMethod' => 'PIX']], 'BANK', 'pix'],
+            [['operationType' => 'CARTAO'], 'BANK', 'card'],
+            [[], 'CREDIT', 'card'],
+            [['operationType' => 'CARTAO', 'paymentData' => ['paymentMethod' => 'PIX']], 'BANK', 'other'],
+            [['operationType' => 'TED', 'paymentData' => ['paymentMethod' => 'PIX']], 'BANK', 'other'],
+            [['operationType' => 'CARTAO', 'paymentData' => ['paymentMethod' => 'TED']], 'BANK', 'other'],
+            [['description' => 'Pix não confirmado', 'operationType' => 'OUTROS'], 'BANK', 'other'],
+        ] as [$payload, $account, $expected]) {
+            $this->assertSame($expected, $classifier->classify($payload, $account)['payment_method']);
+        }
     }
 }

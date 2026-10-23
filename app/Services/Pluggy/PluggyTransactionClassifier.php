@@ -11,9 +11,9 @@ class PluggyTransactionClassifier
      */
     public function classify(array $transaction, string $accountType): array
     {
-        $operationType = strtoupper((string) ($transaction['operationType'] ?? ''));
+        $operationType = strtoupper(trim((string) ($transaction['operationType'] ?? '')));
         $direction = strtoupper((string) ($transaction['type'] ?? ''));
-        $paymentMethod = strtoupper((string) data_get($transaction, 'paymentData.paymentMethod', ''));
+        $paymentMethod = strtoupper(trim((string) data_get($transaction, 'paymentData.paymentMethod', '')));
         $description = mb_strtoupper((string) ($transaction['description'] ?? ''));
 
         $classification = match (true) {
@@ -42,9 +42,27 @@ class PluggyTransactionClassifier
         return [
             'classification' => $classification,
             'affects_totals' => $affectsTotals,
-            'payment_method' => str_contains($paymentMethod . $operationType, 'PIX')
-                ? 'pix'
-                : ($accountType === 'CREDIT' ? 'card' : ($operationType === 'CARTAO' ? 'pix' : 'other')),
+            'payment_method' => $this->paymentMethod($operationType, $paymentMethod, $accountType),
         ];
+    }
+
+    private function paymentMethod(string $operationType, string $paymentMethod, string $accountType): string
+    {
+        $pix = $operationType === 'PIX' || $paymentMethod === 'PIX';
+        $card = $operationType === 'CARTAO' || $paymentMethod === 'CARTAO';
+        $nonPixTransfer = in_array($operationType, ['TED', 'DOC', 'BOLETO'], true)
+            || in_array($paymentMethod, ['TED', 'DOC', 'BOLETO'], true);
+
+        if (($pix && ($card || $nonPixTransfer)) || ($card && $nonPixTransfer)) {
+            return 'other';
+        }
+        if ($pix) {
+            return 'pix';
+        }
+        if ($card || (strtoupper($accountType) === 'CREDIT' && ! $nonPixTransfer)) {
+            return 'card';
+        }
+
+        return 'other';
     }
 }
