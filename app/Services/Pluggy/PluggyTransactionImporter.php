@@ -82,7 +82,7 @@ class PluggyTransactionImporter
                     'classification' => $classification['classification'],
                     'affects_totals' => $affectsTotals,
                     'exclusion_reason' => $affectsTotals ? null : ($status === 'POSTED' ? $classification['exclusion_reason'] : 'pending'),
-                    'payment_method' => $classification['payment_method'],
+                    'payment_method' => $existing?->user_modified_payment_method ? $existing->payment_method : $classification['payment_method'],
                     'pluggy_category_id' => $transaction['categoryId'] ?? null,
                     'pluggy_category_name' => $transaction['category'] ?? null,
                     'category_id' => $existing?->user_modified_category ? $existing->category_id : $categoryId,
@@ -116,7 +116,7 @@ class PluggyTransactionImporter
     /** @param array<string, mixed> $transaction */
     private function findExisting(int $userId, PluggyAccount $account, array $transaction): ?PluggyTransaction
     {
-        $byPluggyId = PluggyTransaction::query()->where('pluggy_transaction_id', $transaction['id'])->first();
+        $byPluggyId = PluggyTransaction::query()->where('pluggy_transaction_id', $transaction['id'])->lockForUpdate()->first();
         if ($byPluggyId) {
             if ((int) $byPluggyId->user_id !== $userId) {
                 throw new \LogicException('Identificador de transação já vinculado a outro proprietário.');
@@ -131,7 +131,7 @@ class PluggyTransactionImporter
             $matches = PluggyTransaction::query()
                 ->where('user_id', $userId)
                 ->where('provider_id', $transaction['providerId'])
-                ->limit(2)->get();
+                ->lockForUpdate()->limit(2)->get();
             if ($matches->count() > 1 || ($matches->isNotEmpty() && (int) $matches->first()->pluggy_account_id !== (int) $account->id)) {
                 throw new \LogicException('Identificador do provedor ambíguo entre contas ou transações.');
             }

@@ -78,10 +78,12 @@ class PluggyTransactionRuleService
                         'classification' => $resolved['classification'],
                         'affects_totals' => $affectsTotals,
                         'exclusion_reason' => $affectsTotals ? null : ($status === 'POSTED' ? $resolved['exclusion_reason'] : 'pending'),
-                        'payment_method' => $resolved['payment_method'],
                         'is_internal_transfer' => $resolved['is_internal_transfer'],
                         'paired_transaction_id' => null,
                     ]);
+                    PluggyTransaction::query()->whereKey($transaction->id)
+                        ->where('user_modified_payment_method', false)
+                        ->update(['payment_method' => $resolved['payment_method']]);
                 }
             });
 

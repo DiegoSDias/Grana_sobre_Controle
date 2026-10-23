@@ -6,7 +6,7 @@
             <div class="rounded-2xl border border-slate-100 bg-white p-8 shadow-sm">
                 <p class="text-sm font-medium uppercase tracking-widest text-blue-600">Importado pela Pluggy</p>
                 <h1 class="mt-2 text-3xl font-light text-slate-900">Editar {{ $isIncome ? 'receita' : 'despesa' }}</h1>
-                <p class="mt-2 text-sm text-slate-500">A descrição, a data e a categoria escolhidas aqui não serão substituídas pela próxima sincronização.</p>
+                <p class="mt-2 text-sm text-slate-500">Suas alterações serão preservadas nas próximas sincronizações. Você pode voltar à classificação automática da forma de pagamento.</p>
 
                 <form method="POST" action="{{ route('pluggy.transactions.update', $transaction) }}" class="mt-8 space-y-5">
                     @csrf @method('PUT')
@@ -19,6 +19,26 @@
                         <label class="text-sm font-medium text-slate-700" for="transaction_date">Data</label>
                         <input id="transaction_date" name="transaction_date" type="date" required value="{{ old('transaction_date', $transaction->transaction_date->format('Y-m-d')) }}" class="mt-1 w-full rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500">
                         @error('transaction_date')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-slate-700" for="payment_method">Forma de pagamento</label>
+                        <select id="payment_method" name="payment_method" class="mt-1 w-full rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500">
+                            @php($selectedPaymentMethod = old('payment_method', in_array($transaction->payment_method, ['pix', 'card', 'debito', 'credito', 'dinheiro'], true) ? $transaction->payment_method : 'other'))
+                            <option value="pix" @selected($selectedPaymentMethod === 'pix')>Pix</option>
+                            <option value="card" @selected($selectedPaymentMethod === 'card')>Cartão — modalidade não informada</option>
+                            <option value="debito" @selected($selectedPaymentMethod === 'debito')>Cartão de débito</option>
+                            <option value="credito" @selected($selectedPaymentMethod === 'credito')>Cartão de crédito</option>
+                            <option value="dinheiro" @selected($selectedPaymentMethod === 'dinheiro')>Dinheiro</option>
+                            <option value="other" @selected($selectedPaymentMethod === 'other')>Outro ou não identificado</option>
+                        </select>
+                        @error('payment_method')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                        <p class="mt-1 text-sm text-slate-500">{{ $transaction->user_modified_payment_method ? 'Forma definida por você; será preservada nas próximas sincronizações.' : 'Forma identificada automaticamente. Se você alterá-la, sua escolha será preservada.' }}</p>
+                        @if ($transaction->user_modified_payment_method)
+                            <label class="mt-3 flex items-start gap-2 text-sm text-slate-700">
+                                <input type="checkbox" name="restore_automatic" value="1" @checked(old('restore_automatic')) class="mt-1 rounded border-slate-300">
+                                <span>Voltar à classificação automática. Ao salvar, o FINUP usará novamente os dados recebidos da Pluggy, em vez da escolha acima.</span>
+                            </label>
+                        @endif
                     </div>
                     <div>
                         <label class="text-sm font-medium text-slate-700" for="category_id">Categoria</label>

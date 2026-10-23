@@ -32,7 +32,7 @@ class PluggyTransaction extends Model
         'current_installment', 'total_installments', 'purchase_date', 'payment_data',
         'credit_card_metadata', 'raw_payload', 'is_internal_transfer', 'paired_transaction_id',
         'removed_at', 'deleted_by_user_at', 'user_modified_description', 'user_modified_category',
-        'user_modified_date',
+        'user_modified_date', 'user_modified_payment_method',
     ];
 
     protected function casts(): array
@@ -44,6 +44,7 @@ class PluggyTransaction extends Model
             'credit_card_metadata' => 'array', 'raw_payload' => 'array', 'removed_at' => 'datetime',
             'deleted_by_user_at' => 'datetime', 'user_modified_description' => 'boolean',
             'user_modified_category' => 'boolean', 'user_modified_date' => 'boolean',
+            'user_modified_payment_method' => 'boolean',
         ];
     }
 
@@ -94,7 +95,20 @@ class PluggyTransaction extends Model
 
     public function getPaymentModeAttribute(): string
     {
-        return $this->payment_method === 'pix' ? 'pix' : 'cartao';
+        return match ($this->payment_method) {
+            'pix' => 'pix', 'card' => 'cartao',
+            'debito', 'credito', 'dinheiro' => $this->payment_method,
+            default => 'other',
+        };
+    }
+
+    public function getPaymentLabelAttribute(): string
+    {
+        return match ($this->payment_method) {
+            'pix' => 'Pix', 'card' => 'Cartão — modalidade não informada',
+            'debito' => 'Cartão de débito', 'credito' => 'Cartão de crédito',
+            'dinheiro' => 'Dinheiro', default => 'Outro ou não identificado',
+        };
     }
 
     public function getDateAttribute()

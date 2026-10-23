@@ -18,7 +18,7 @@
                     <div><dt class="text-sm font-medium text-slate-500">Valor</dt><dd class="mt-1 rounded-xl bg-slate-50 p-3 font-semibold {{ $isIncome ? 'text-emerald-700' : 'text-rose-700' }}">R$ {{ number_format($transaction->display_amount, 2, ',', '.') }}</dd></div>
                     <div><dt class="text-sm font-medium text-slate-500">Categoria</dt><dd class="mt-1 rounded-xl bg-slate-50 p-3 text-slate-900">{{ $transaction->category?->name ?? 'Sem categoria' }}</dd></div>
                     <div><dt class="text-sm font-medium text-slate-500">Conta</dt><dd class="mt-1 rounded-xl bg-slate-50 p-3 text-slate-900">{{ $transaction->account?->name ?? '—' }}</dd></div>
-                    <div><dt class="text-sm font-medium text-slate-500">Forma de pagamento</dt><dd class="mt-1 rounded-xl bg-slate-50 p-3 text-slate-900">{{ $transaction->payment_method === 'pix' ? 'Pix' : ($transaction->payment_method === 'card' ? 'Cartão' : 'Outro') }}</dd></div>
+                    <div><dt class="text-sm font-medium text-slate-500">Forma de pagamento</dt><dd class="mt-1 rounded-xl bg-slate-50 p-3 text-slate-900">{{ $transaction->payment_label }} <span class="text-xs text-slate-500">({{ $transaction->user_modified_payment_method ? 'definida por você' : 'classificação automática' }})</span></dd></div>
                     <div><dt class="text-sm font-medium text-slate-500">Situação na instituição</dt><dd class="mt-1 rounded-xl bg-slate-50 p-3 text-slate-900">{{ $transaction->status === 'POSTED' ? 'Confirmada' : 'Pendente' }}</dd></div>
                 </dl>
 

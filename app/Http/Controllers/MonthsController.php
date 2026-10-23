@@ -95,8 +95,8 @@ class MonthsController extends Controller
             ])
             ->when($request->expense_category, fn ($q) => $q->where('category_id', $request->expense_category))
             ->when($request->payment_mode, function ($q) use ($request) {
-                if (in_array($request->payment_mode, ['pix', 'cartao'], true)) {
-                    $q->where('payment_method', $request->payment_mode === 'cartao' ? 'card' : 'pix');
+                if (in_array($request->payment_mode, ['pix', 'cartao', 'debito', 'credito', 'dinheiro'], true)) {
+                    $q->where('payment_method', $request->payment_mode === 'cartao' ? 'card' : $request->payment_mode);
                 } else {
                     $q->whereRaw('1 = 0');
                 }
