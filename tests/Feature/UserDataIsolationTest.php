@@ -217,6 +217,7 @@ class UserDataIsolationTest extends TestCase
 
     public function test_webhook_requires_secret_and_cannot_transfer_a_connection(): void
     {
+        config()->set('queue.default', 'database');
         $a = User::factory()->create();
         $b = User::factory()->create();
         $item = PluggyItem::create(['user_id' => $b->id, 'pluggy_item_id' => (string) Str::uuid(), 'last_event' => 'item/created']);
