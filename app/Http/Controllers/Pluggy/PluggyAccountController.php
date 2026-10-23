@@ -138,6 +138,44 @@ class PluggyAccountController extends Controller
         return back()->with('success', 'Sincronização solicitada. Os dados serão atualizados em breve.');
     }
 
+    public function syncAll(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $scheduled = 0;
+        $failed = 0;
+        $inProgress = 0;
+
+        foreach ($request->user()->pluggyItems()->where('is_active', true)->get() as $item) {
+            $updated = $request->user()->pluggyItems()->whereKey($item->id)->where('is_active', true)
+                ->where(fn ($query) => $query->whereNull('last_sync_status')->orWhereNotIn('last_sync_status', ['queued', 'running']))
+                ->update(['last_sync_status' => 'queued', 'last_error' => null]);
+
+            if (! $updated) {
+                $inProgress++;
+                continue;
+            }
+
+            try {
+                SyncPluggyConnection::dispatch($item->id, true);
+                $scheduled++;
+            } catch (Throwable $exception) {
+                $request->user()->pluggyItems()->whereKey($item->id)->where('last_sync_status', 'queued')
+                    ->update(['last_sync_status' => 'failed', 'last_error' => 'Não foi possível agendar a sincronização.']);
+                Log::warning('Não foi possível agendar sincronização Pluggy.', ['connection_id' => $item->id, 'exception' => $exception::class]);
+                $failed++;
+            }
+        }
+
+        $message = $scheduled ? "Sincronização solicitada para {$scheduled} conexão(ões)." : 'Nenhuma nova sincronização foi agendada.';
+        if ($inProgress) {
+            $message .= " {$inProgress} conexão(ões) já estavam na fila ou em processamento.";
+        }
+        if ($failed) {
+            $message .= " Não foi possível agendar {$failed} conexão(ões); tente novamente.";
+        }
+
+        return back()->with($failed ? 'warning' : 'success', $message);
+    }
+
     public function destroy(Request $request, int $connection): \Illuminate\Http\RedirectResponse
     {
         $item = $request->user()->pluggyItems()->where('is_active', true)->findOrFail($connection);

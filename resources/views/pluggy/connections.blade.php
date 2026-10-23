@@ -10,13 +10,20 @@
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-10">
                 <div><p class="text-sm font-medium uppercase tracking-widest text-blue-600 mb-2">Open Finance</p><h1 class="text-4xl font-light tracking-tight text-slate-900">Minhas conexões</h1><p class="mt-2 text-slate-500">Dados sincronizados localmente pela Pluggy.</p></div>
                 <div class="flex flex-wrap gap-3">
+                    @if ($connections->isNotEmpty())
+                        <form method="POST" action="{{ route('pluggy.connections.sync-all') }}" data-sync-form>@csrf<button class="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700">Sincronizar todos</button></form>
+                    @endif
                     <a href="{{ route('pluggy.data-notice') }}" class="inline-flex items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-700 shadow-sm hover:bg-blue-100">Sobre os dados importados</a>
                     <a href="{{ route('dashboard') }}" class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50">Voltar ao painel</a>
                 </div>
             </div>
 
             @if (session('success'))<div class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-800">{{ session('success') }}</div>@endif
+            @if (session('warning'))<div class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-800">{{ session('warning') }}</div>@endif
 
+            <p id="sync-update-message" class="mb-4 text-sm text-slate-600" role="status" aria-live="polite"></p>
+
+            <div id="connection-overview">
             @if ($connections->isEmpty())
                 <div class="rounded-3xl border border-dashed border-slate-300 bg-white/70 px-6 py-16 text-center shadow-sm"><h2 class="text-xl font-medium text-slate-900">Nenhuma conexão vinculada</h2><p class="mx-auto mt-2 max-w-md text-slate-500">Vincule um Item ID já existente ou conecte uma nova instituição no painel.</p><a href="{{ route('dashboard') }}" class="mt-6 inline-flex rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700">Ir para o painel</a></div>
             @else
@@ -24,13 +31,13 @@
 
                 <div class="space-y-5 mb-10">
                     @foreach ($connections as $connection)
-                        <section class="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+                        <section data-sync-status="{{ $connection->last_sync_status }}" class="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
                             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                                 <div class="flex items-center gap-4">
                                     @if ($connection->connector_image_url)<img src="{{ $connection->connector_image_url }}" class="h-11 w-11 rounded-xl" alt="">@else<div class="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100 text-blue-700">⌁</div>@endif
-                                    <div><h2 class="font-medium text-slate-900">{{ $connection->connector_name ?? 'Instituição conectada' }}</h2><p class="text-sm text-slate-500">{{ $connection->accounts->count() }} conta(s) · {{ $connection->last_synced_at?->format('d/m/Y H:i') ?? 'Aguardando primeira sincronização' }}</p>@if ($connection->last_error)<p class="mt-1 text-sm text-red-600">{{ $connection->last_error }}</p>@endif</div>
+                                    <div><h2 class="font-medium text-slate-900">{{ $connection->connector_name ?? 'Instituição conectada' }}</h2><p class="text-sm text-slate-500">{{ $connection->accounts->count() }} conta(s) · {{ $connection->last_synced_at?->format('d/m/Y H:i') ?? 'Aguardando primeira sincronização' }}</p><p class="mt-1 text-sm text-slate-700">{{ match ($connection->last_sync_status) { 'queued' => 'Aguardando na fila', 'running' => 'Sincronização em andamento', 'awaiting_provider' => 'Aguardando o provedor', 'success' => 'Sincronização concluída', 'partial' => 'Atualização parcial no provedor', 'failed' => 'Sincronização falhou', 'needs_reconnection', 'not_found' => 'Conexão precisa de revisão', 'needs_action' => 'A instituição solicita uma ação', default => 'Estado de sincronização não informado' } }}</p>@if ($connection->last_error)<p class="mt-1 text-sm text-red-600">{{ $connection->last_error }}</p>@endif</div>
                                 </div>
-                                <div class="flex gap-2"><form method="POST" action="{{ route('pluggy.connections.sync', $connection->id) }}">@csrf<button class="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700">Sincronizar</button></form><form method="POST" action="{{ route('pluggy.connections.destroy', $connection->id) }}" onsubmit="return confirm('Remover esta conexão do sistema?')">@csrf @method('DELETE')<button class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">Remover</button></form></div>
+                                <div class="flex gap-2"><form method="POST" action="{{ route('pluggy.connections.sync', $connection->id) }}" data-sync-form>@csrf<button @disabled(in_array($connection->last_sync_status, ['queued', 'running'], true)) class="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">Sincronizar</button></form><form method="POST" action="{{ route('pluggy.connections.destroy', $connection->id) }}" onsubmit="return confirm('Remover esta conexão do sistema?')">@csrf @method('DELETE')<button class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">Remover</button></form></div>
                             </div>
                         </section>
                     @endforeach
@@ -43,6 +50,7 @@
                     @endforeach
                 </div>
             @endif
+            </div>
 
             @if ($inactiveConnections->isNotEmpty())
                 <section class="mt-10 rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm">
@@ -113,4 +121,57 @@
             </section>
         </div>
     </div>
+    <script>
+        (() => {
+            const overview = document.getElementById('connection-overview');
+            const message = document.getElementById('sync-update-message');
+            let timer;
+            let stopped = false;
+            let loading = false;
+
+            function pending() {
+                return [...overview.querySelectorAll('[data-sync-status]')].some(element =>
+                    ['queued', 'running', 'awaiting_provider'].includes(element.dataset.syncStatus));
+            }
+
+            function schedule() {
+                clearTimeout(timer);
+                if (!stopped && !document.hidden) timer = setTimeout(refresh, pending() ? 5000 : 60000);
+            }
+
+            async function refresh() {
+                if (loading || stopped || document.hidden) return;
+                loading = true;
+                try {
+                    const response = await fetch(window.location.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, cache: 'no-store' });
+                    if (!response.ok || response.redirected) throw new Error('Falha ao consultar estados');
+                    const html = await response.text();
+                    const next = new DOMParser().parseFromString(html, 'text/html').getElementById('connection-overview');
+                    if (!next) throw new Error('Resposta inesperada');
+                    if (stopped) return;
+                    const wasPending = pending();
+                    if (overview.innerHTML !== next.innerHTML) overview.innerHTML = next.innerHTML;
+                    message.textContent = pending()
+                        ? 'Acompanhando a sincronização. Alguns bancos podem levar mais tempo.'
+                        : (wasPending ? 'Os estados foram atualizados. Confira o resultado de cada banco.' : '');
+                } catch (error) {
+                    message.textContent = 'Não foi possível atualizar os estados automaticamente. Verifique sua conexão ou atualize a página.';
+                } finally {
+                    loading = false;
+                    schedule();
+                }
+            }
+
+            document.addEventListener('submit', event => {
+                if (!event.target.matches('[data-sync-form]')) return;
+                stopped = true;
+                clearTimeout(timer);
+                const button = event.target.querySelector('button');
+                if (button) { button.disabled = true; button.textContent = 'Solicitando...'; }
+            });
+            document.addEventListener('visibilitychange', () => document.hidden ? clearTimeout(timer) : refresh());
+            if (pending()) message.textContent = 'Acompanhando a sincronização. Alguns bancos podem levar mais tempo.';
+            schedule();
+        })();
+    </script>
 </x-app-layout>
