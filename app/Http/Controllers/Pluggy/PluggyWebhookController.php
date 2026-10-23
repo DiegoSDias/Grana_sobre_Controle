@@ -91,7 +91,7 @@ class PluggyWebhookController extends Controller
         $connection->update(
             [
                 'last_event' => $event['event'],
-                'last_error' => $event['error']['message'] ?? $event['error']['description'] ?? null,
+                'last_error' => ! empty($event['error']) ? 'A instituição informou um problema na conexão. Verifique o estado da sincronização.' : null,
                 'deleted_at' => $event['event'] === 'item/deleted' ? now() : null,
                 'is_active' => $event['event'] !== 'item/deleted',
             ],

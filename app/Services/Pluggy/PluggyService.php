@@ -74,6 +74,9 @@ class PluggyService
     public function getItem(string $itemId): array
     {
         $response = $this->authenticatedClient()->get($this->baseUrl . '/items/' . $itemId);
+        if ($response->status() === 404) {
+            throw new PluggyItemNotFoundException('O item não foi encontrado.');
+        }
         $response->throw();
 
         return $response->json();
@@ -116,6 +119,9 @@ class PluggyService
             ]);
             $response->throw();
             $payload = $response->json();
+            if (! is_array($payload) || ! isset($payload['results']) || ! is_array($payload['results']) || ! array_is_list($payload['results'])) {
+                throw new LogicException('Resposta de contas inválida.');
+            }
             $accounts = [...$accounts, ...($payload['results'] ?? [])];
             $totalPages = max(1, (int) ($payload['totalPages'] ?? 1));
             $page++;
@@ -140,11 +146,19 @@ class PluggyService
     {
         $transactions = [];
         $next = '?accountId=' . rawurlencode($accountId);
+        $visited = [];
 
         do {
+            if (isset($visited[$next])) {
+                throw new LogicException('Cursor de transações repetido.');
+            }
+            $visited[$next] = true;
             $response = $this->authenticatedClient()->get($this->baseUrl . '/v2/transactions' . $next);
             $response->throw();
             $payload = $response->json();
+            if (! is_array($payload) || ! isset($payload['results']) || ! is_array($payload['results']) || ! array_is_list($payload['results'])) {
+                throw new LogicException('Resposta de transações inválida.');
+            }
             $transactions = [...$transactions, ...($payload['results'] ?? [])];
             $next = $payload['next'] ?? null;
 

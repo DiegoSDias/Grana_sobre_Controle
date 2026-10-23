@@ -313,7 +313,7 @@
                         return;
                     }
 
-                    setPluggyFeedback(error?.message || 'Não foi possível concluir a conexão com a instituição.', true);
+                    setPluggyFeedback('Não foi possível concluir a conexão com a instituição. Tente novamente ou revise a conexão.', true);
                 }
             });
 

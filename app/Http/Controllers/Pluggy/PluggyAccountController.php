@@ -8,6 +8,7 @@ use App\Models\PluggyItem;
 use App\Models\PluggyTransactionRule;
 use App\Models\PluggyTransaction;
 use App\Services\Pluggy\PluggyService;
+use App\Services\Pluggy\PluggyItemNotFoundException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -91,8 +92,11 @@ class PluggyAccountController extends Controller
                     'last_error' => null,
                     'deleted_at' => null,
                     'is_active' => true,
+                    'last_sync_status' => 'queued',
                 ]
             );
+        } catch (PluggyItemNotFoundException $exception) {
+            return response()->json(['message' => 'Este Item não foi encontrado na Pluggy. Revise a conexão.'], 404);
         } catch (RequestException $exception) {
             $pluggyCode = (string) ($exception->response?->json('codeDescription') ?? '');
             Log::warning('Não foi possível validar o Item Pluggy conectado.', [
@@ -126,6 +130,9 @@ class PluggyAccountController extends Controller
     public function sync(Request $request, int $connection): \Illuminate\Http\RedirectResponse
     {
         $item = $request->user()->pluggyItems()->where('is_active', true)->findOrFail($connection);
+        $item->newQuery()->whereKey($item->id)->where(function ($query) {
+            $query->whereNull('last_sync_status')->orWhereNotIn('last_sync_status', ['queued', 'running']);
+        })->update(['last_sync_status' => 'queued', 'last_error' => null]);
         SyncPluggyConnection::dispatch($item->id, true);
 
         return back()->with('success', 'Sincronização solicitada. Os dados serão atualizados em breve.');

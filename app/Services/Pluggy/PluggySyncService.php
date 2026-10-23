@@ -10,6 +10,9 @@ use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 use App\Services\MonthlyBalanceService;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 class PluggySyncService
 {
@@ -23,43 +26,94 @@ class PluggySyncService
     /** @return array{accounts: int, created: int, updated: int, transfers: int, status: string} */
     public function sync(PluggyItem $connection, bool $requestRemoteSync = false): array
     {
+        $lock = Cache::store('database')->lock('pluggy-sync:'.$connection->id, 300);
+        if (! $lock->get()) {
+            throw new RuntimeException('Já existe uma sincronização em andamento para esta conexão.');
+        }
+        try {
+            return $this->syncLocked($connection, $requestRemoteSync);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    private function syncLocked(PluggyItem $connection, bool $requestRemoteSync): array
+    {
         $connection->update(['last_sync_started_at' => now(), 'last_sync_status' => 'running', 'last_error' => null]);
         Log::info('Sincronização Pluggy iniciada.', ['connection_id' => $connection->id]);
 
+        $stage = 'item';
         try {
             $item = $this->pluggy->getItem($connection->pluggy_item_id);
 
             // O conector MeuPluggy expõe os dados já prontos, mas rejeita PATCH /items.
             // Para ele, uma sincronização manual significa apenas importar o estado atual.
             if ($requestRemoteSync && ! $this->isMeuPluggy($item)) {
+                $stage = 'request_update';
                 $item = $this->pluggy->syncItem($connection->pluggy_item_id);
             }
 
             $this->updateConnectionFromItem($connection, $item);
 
-            if (($item['executionStatus'] ?? null) && ($item['executionStatus'] ?? null) !== 'SUCCESS') {
-                $connection->update(['last_sync_status' => 'awaiting_provider']);
-
-                return ['accounts' => 0, 'created' => 0, 'updated' => 0, 'transfers' => 0, 'status' => 'awaiting_provider'];
+            $status = strtoupper((string) ($item['status'] ?? ''));
+            $execution = strtoupper((string) ($item['executionStatus'] ?? ''));
+            if ($status === 'LOGIN_ERROR' || $execution === 'INVALID_CREDENTIALS') {
+                $connection->update(['last_sync_status' => 'needs_reconnection', 'last_error' => 'A instituição exige que você revise a conexão.']);
+                return $this->emptyResult('needs_reconnection');
+            }
+            if ($status === 'WAITING_USER_INPUT') {
+                $connection->update(['last_sync_status' => 'needs_action', 'last_error' => 'A instituição solicita uma ação para continuar.']);
+                return $this->emptyResult('needs_action');
+            }
+            if ($execution === 'PARTIAL_SUCCESS') {
+                $connection->update(['last_sync_status' => 'partial', 'last_error' => 'A instituição retornou uma atualização parcial; os dados anteriores foram preservados.']);
+                return $this->emptyResult('partial');
+            }
+            if ($status === 'OUTDATED' || in_array($execution, ['ERROR', 'CONNECTION_ERROR'], true)) {
+                $this->markFailed($connection, 'A instituição não concluiu a atualização. Tente novamente mais tarde.', null);
+                return $this->emptyResult('failed');
+            }
+            if ($status === 'UPDATING' || ($execution !== '' && $execution !== 'SUCCESS')) {
+                $connection->update(['last_sync_status' => 'awaiting_provider', 'last_error' => null]);
+                return $this->emptyResult('awaiting_provider');
             }
 
+            $stage = 'accounts';
             $remoteAccounts = $this->pluggy->getAccountsForItem($connection->pluggy_item_id);
+            if ($remoteAccounts === [] && $connection->accounts()->where('is_active', true)->exists()) {
+                $connection->update(['last_sync_status' => 'partial', 'last_error' => 'Nenhuma conta foi retornada; os dados anteriores foram preservados.']);
+                return $this->emptyResult('partial');
+            }
+            $transactions = [];
+            foreach ($remoteAccounts as $remoteAccount) {
+                if (empty($remoteAccount['id'])) {
+                    throw new RuntimeException('Conta recebida sem identificador.');
+                }
+                $stage = 'transactions';
+                $transactions[$remoteAccount['id']] = $this->pluggy->getTransactions($remoteAccount['id']);
+            }
+
+            return DB::transaction(function () use ($connection, $remoteAccounts, $transactions) {
+            $connection = PluggyItem::query()->lockForUpdate()->find($connection->id);
+            if (! $connection || ! $connection->is_active) {
+                return $this->emptyResult('disconnected');
+            }
             $remoteAccountIds = [];
             $created = 0;
             $updated = 0;
-
             foreach ($remoteAccounts as $remoteAccount) {
                 $account = $this->upsertAccount($connection, $remoteAccount);
                 $remoteAccountIds[] = $account->pluggy_account_id;
-                $result = $this->importer->import($connection, $account, $this->pluggy->getTransactions($account->pluggy_account_id));
+                $result = $this->importer->import($connection, $account, $transactions[$account->pluggy_account_id]);
                 $created += $result['created'];
                 $updated += $result['updated'];
             }
-
+            if ($remoteAccountIds !== []) {
             $connection->accounts()
                 ->where('user_id', $connection->user_id)
-                ->when($remoteAccountIds !== [], fn ($query) => $query->whereNotIn('pluggy_account_id', $remoteAccountIds))
+                ->whereNotIn('pluggy_account_id', $remoteAccountIds)
                 ->update(['is_active' => false]);
+            }
 
             $transfers = $this->transferMatcher->matchForUser($connection->user_id);
             app(MonthlyBalanceService::class)->recalculateClosedFrom($connection->user_id, 0, 1);
@@ -74,13 +128,28 @@ class PluggySyncService
             ]);
 
             return ['accounts' => count($remoteAccounts), 'created' => $created, 'updated' => $updated, 'transfers' => $transfers, 'status' => 'success'];
+            });
+        } catch (PluggyItemNotFoundException $exception) {
+            $connection->update(['last_sync_status' => 'needs_reconnection', 'last_error' => 'A conexão não foi encontrada no provedor. Revise a conexão.']);
+            return $this->emptyResult('needs_reconnection');
         } catch (RequestException $exception) {
-            $this->markFailed($connection, 'A Pluggy não respondeu à sincronização.', $exception->response?->status());
-            throw $exception;
+            $status = $exception->response?->status();
+            $this->markFailed($connection, 'Não foi possível atualizar os dados bancários. Os dados anteriores foram preservados.', $status);
+            Log::warning('Etapa de sincronização Pluggy com erro.', ['connection_id' => $connection->id, 'stage' => $stage, 'status' => $status]);
+            if ($status && $status >= 400 && $status < 500 && $status !== 429) {
+                return $this->emptyResult('failed');
+            }
+            throw new RuntimeException('Falha temporária na sincronização Pluggy.');
         } catch (Throwable $exception) {
             $this->markFailed($connection, 'Não foi possível concluir a sincronização.', null);
-            throw $exception;
+            Log::warning('Erro na sincronização Pluggy.', ['connection_id' => $connection->id, 'stage' => $stage, 'exception' => $exception::class]);
+            throw new RuntimeException('Falha na sincronização Pluggy.');
         }
+    }
+
+    private function emptyResult(string $status): array
+    {
+        return ['accounts' => 0, 'created' => 0, 'updated' => 0, 'transfers' => 0, 'status' => $status];
     }
 
     public function markTransactionsDeleted(string $pluggyItemId, array $transactionIds): int
@@ -108,8 +177,7 @@ class PluggySyncService
             'status' => $item['status'] ?? $connection->status,
             'execution_status' => $item['executionStatus'] ?? $connection->execution_status,
             'last_event' => (($item['status'] ?? null) === 'UPDATED') ? 'item/updated' : $connection->last_event,
-            'last_error' => data_get($item, 'error.message') ?? data_get($item, 'error.description'),
-            'is_active' => true,
+            'last_error' => null,
         ]);
     }
 

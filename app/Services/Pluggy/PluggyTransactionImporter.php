@@ -43,7 +43,7 @@ class PluggyTransactionImporter
                     $transaction['descriptionRaw'] ?? null,
                     $this->classifier->classify($transaction, $account->type),
                 );
-                $existing = $this->findExisting($connection->user_id, $transaction);
+                $existing = $this->findExisting($connection->user_id, $account, $transaction);
                 // Uma exclusão feita pelo usuário é local e deve sobreviver às próximas sincronizações.
                 if ($existing?->deleted_by_user_at) {
                     $updated++;
@@ -114,21 +114,28 @@ class PluggyTransactionImporter
     }
 
     /** @param array<string, mixed> $transaction */
-    private function findExisting(int $userId, array $transaction): ?PluggyTransaction
+    private function findExisting(int $userId, PluggyAccount $account, array $transaction): ?PluggyTransaction
     {
         $byPluggyId = PluggyTransaction::query()->where('pluggy_transaction_id', $transaction['id'])->first();
         if ($byPluggyId) {
             if ((int) $byPluggyId->user_id !== $userId) {
                 throw new \LogicException('Identificador de transação já vinculado a outro proprietário.');
             }
+            if ((int) $byPluggyId->pluggy_account_id !== (int) $account->id) {
+                throw new \LogicException('Identificador de transação já vinculado a outra conta.');
+            }
             return $byPluggyId;
         }
 
         if (! empty($transaction['providerId'])) {
-            return PluggyTransaction::query()
+            $matches = PluggyTransaction::query()
                 ->where('user_id', $userId)
                 ->where('provider_id', $transaction['providerId'])
-                ->first();
+                ->limit(2)->get();
+            if ($matches->count() > 1 || ($matches->isNotEmpty() && (int) $matches->first()->pluggy_account_id !== (int) $account->id)) {
+                throw new \LogicException('Identificador do provedor ambíguo entre contas ou transações.');
+            }
+            return $matches->first();
         }
 
         return null;
